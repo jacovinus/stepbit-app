@@ -1,0 +1,173 @@
+import { useState, useCallback, useRef, useEffect } from 'react';
+import type { WsServerMessage, WsClientMessage, Message } from '../types';
+
+export const useChatStream = (sessionId: string | null) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const streamBufferRef = useRef<string>("");
+
+  const connect = useCallback((apiKey: string) => {
+    if (!sessionId) return;
+
+    const host = import.meta.env.VITE_WS_BASE_URL || window.location.host;
+    let wsUrl: string;
+
+    if (host.startsWith('ws://') || host.startsWith('wss://')) {
+        // If it's a full URL, use it as base
+        wsUrl = `${host}/ws/chat/${sessionId}?api_key=${apiKey}`;
+    } else {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        wsUrl = `${protocol}//${host}/ws/chat/${sessionId}?api_key=${apiKey}`;
+    }
+    
+    // Clean up double slashes (except after protocol)
+    wsUrl = wsUrl.replace(/([^:]\/)\/+/g, "$1");
+    console.log('Connecting to WebSocket:', wsUrl);
+
+    if (wsRef.current) wsRef.current.close();
+
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('WS Connected');
+      setError(null);
+    };
+
+    ws.onmessage = (event) => {
+      const data: WsServerMessage = JSON.parse(event.data);
+      console.log(data, "Data")
+      if (data.type === 'chunk') {
+        setIsStreaming(true);
+        setIsWaiting(false);
+        setStatus(null);
+        streamBufferRef.current += data.content;
+        
+        // Update the last assistant message in state or add a temporary one
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === 'assistant') {
+            return [
+              ...prev.slice(0, -1),
+              { ...last, content: streamBufferRef.current }
+            ];
+          } else {
+            return [
+              ...prev,
+              { 
+                id: Date.now(), 
+                session_id: sessionId, 
+                role: 'assistant', 
+                content: data.content,
+                model: 'streaming...',
+                token_count: null,
+                created_at: new Date().toISOString(),
+                metadata: {}
+              } as Message
+            ];
+          }
+        });
+      } else if (data.type === 'status') {
+        setIsWaiting(true);
+        setStatus(data.content);
+      } else if (data.type === 'done') {
+        console.log('Stream done signal received');
+        setIsStreaming(false);
+        setIsWaiting(false);
+        setStatus(null);
+        streamBufferRef.current = "";
+      } else if (data.type === 'error') {
+        console.error('Stream error message received:', data.content);
+        setError(data.content);
+        setIsStreaming(false);
+        setIsWaiting(false);
+        setStatus(null);
+      }
+    };
+
+    ws.onerror = (e) => {
+      console.error('WebSocket error event:', e);
+      setError('WebSocket connection error');
+      setIsStreaming(false);
+      setIsWaiting(false);
+      setStatus(null);
+    };
+
+    ws.onclose = (e) => {
+      console.log('WS Disconnected', e.code, e.reason);
+      setIsStreaming(false);
+      setIsWaiting(false);
+      setStatus(null);
+    };
+  }, [sessionId]);
+
+  const sendMessage = useCallback((content: string, search: boolean = false, reason: boolean = false) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setError('Not connected');
+      return;
+    }
+
+    setIsWaiting(true);
+    setStatus('Thinking...');
+
+    const clientMsg: WsClientMessage = {
+      type: 'message',
+      content,
+      stream: true,
+      search,
+      reason
+    };
+
+    // Optimistically add user message
+    setMessages(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        session_id: sessionId!,
+        role: 'user',
+        content,
+        model: null,
+        token_count: null,
+        created_at: new Date().toISOString(),
+        metadata: {}
+      } as Message
+    ]);
+
+    wsRef.current.send(JSON.stringify(clientMsg));
+  }, [sessionId]);
+
+  const cancel = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      const cancelMsg: WsClientMessage = {
+        type: 'cancel' as any,
+        content: ''
+      };
+      wsRef.current.send(JSON.stringify(cancelMsg));
+    }
+    setIsStreaming(false);
+    setIsWaiting(false);
+    setStatus(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, []);
+
+  return {
+    messages,
+    setMessages,
+    isStreaming,
+    isWaiting,
+    status,
+    error,
+    connect,
+    sendMessage,
+    cancel
+  };
+};

@@ -1,0 +1,36 @@
+# Go
+/stepbit-app
+/dist
+/target
+/bin
+
+# Frontend
+/web/node_modules
+/web/dist
+/web/.env
+/web/.DS_Store
+
+# Database
+/*.db*
+*.db-wal
+*.db-shm
+/chat.db-data
+/data
+
+# OS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# AI Tools
+.agent/
+.agents/
+.gemini/
+
+# Env
+.env
+.env.local

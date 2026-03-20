@@ -1,0 +1,39 @@
+import { BrowserRouter, Routes, Route } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Layout } from './components/Layout';
+import { Dashboard } from './pages/Dashboard';
+import { Chat } from './pages/Chat';
+import { Database } from './pages/Database';
+import { Settings } from './pages/Settings';
+import { Skills } from './pages/Skills';
+import McpTools from './pages/McpTools';
+import ReasoningPlayground from './pages/ReasoningPlayground';
+import DatabaseExplorer from './pages/DatabaseExplorer';
+import Pipelines from './pages/Pipelines';
+
+
+const queryClient = new QueryClient();
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="chat" element={<Chat />} />
+            <Route path="database" element={<Database />} />
+            <Route path="skills" element={<Skills />} />
+            <Route path="mcp-tools" element={<McpTools />} />
+            <Route path="reasoning" element={<ReasoningPlayground />} />
+            <Route path="pipelines" element={<Pipelines />} />
+            <Route path="db-explorer" element={<DatabaseExplorer />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
