@@ -1,6 +1,7 @@
 export interface Session {
   id: string; // UUID
-  name: string;
+  title?: string;
+  name?: string;
   created_at: string;
   updated_at: string;
   metadata: Record<string, any>;
@@ -18,11 +19,13 @@ export interface Message {
 }
 
 export interface CreateSessionRequest {
-  name: string;
+  title?: string;
+  name?: string;
   metadata?: Record<string, any>;
 }
 
 export interface UpdateSessionRequest {
+  title?: string;
   name?: string;
   metadata?: Record<string, any>;
 }

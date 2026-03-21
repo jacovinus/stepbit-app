@@ -153,7 +153,7 @@ export const Dashboard = () => {
                                 .map((m: MemoryUsageEntry, idx: number) => (
                                     <div key={idx} className="flex flex-col gap-1.5 p-3 bg-gruv-dark-4/10 rounded-xl border border-gruv-dark-4/20">
                                         <div className="flex justify-between items-center text-xs font-mono uppercase tracking-wider text-gruv-light-4">
-                                            <span>{m.tag.replace(/_/g, ' ')}</span>
+                                            <span>{m.tag?.replace(/_/g, ' ') || 'SYSTEM'}</span>
                                             <span className="text-monokai-aqua">{formatBytes(m.usage_bytes)}</span>
                                         </div>
                                         <div className="w-full bg-gruv-dark-4/30 h-1.5 rounded-full overflow-hidden">
@@ -198,7 +198,7 @@ export const Dashboard = () => {
                                         <MessageCircle className="w-5 h-5 text-gruv-light-1" />
                                     </div>
                                     <div className="flex-grow min-w-0">
-                                        <p className="font-semibold text-sm truncate">{s.name}</p>
+                                        <p className="font-semibold text-sm truncate">{s.title || s.name || 'Untitled Session'}</p>
                                         <p className="text-xs text-gruv-light-4">{new Date(s.created_at).toLocaleDateString()} • {s.metadata?.message_count || 0} messages</p>
                                     </div>
                                 </a>

@@ -34,6 +34,7 @@ type ChatOptions struct {
 	Stream      bool    `json:"stream"`
 	Search      bool    `json:"search,omitempty"`
 	Reason      bool    `json:"reason,omitempty"`
+	BaseURL     string  `json:"-"` // Internal override
 }
 
 // StepbitCoreClient handles communication with stepbit-core
@@ -50,7 +51,7 @@ type StepbitCoreClient struct {
 // NewStepbitCoreClient creates a new client for stepbit-core
 func NewStepbitCoreClient(baseURL, apiKey, defaultModel string) *StepbitCoreClient {
 	return &StepbitCoreClient{
-		BaseURL:      baseURL,
+		BaseURL:      strings.TrimSuffix(baseURL, "/"),
 		APIKey:       apiKey,
 		DefaultModel: defaultModel,
 		client: &http.Client{
@@ -59,10 +60,16 @@ func NewStepbitCoreClient(baseURL, apiKey, defaultModel string) *StepbitCoreClie
 	}
 }
 
+func (c *StepbitCoreClient) GetClient() *http.Client {
+	return c.client
+}
+
 // DoAuthenticatedRequest performs an authenticated request with rotating token logic
 func (c *StepbitCoreClient) DoAuthenticatedRequest(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
-	url := c.BaseURL + path
-	
+	return c.DoAuthenticatedRequestWithURL(ctx, method, c.BaseURL+path, body)
+}
+
+func (c *StepbitCoreClient) DoAuthenticatedRequestWithURL(ctx context.Context, method, url string, body interface{}) (*http.Response, error) {
 	var bodyReader *bytes.Reader
 	if body != nil {
 		jsonBytes, err := json.Marshal(body)
@@ -77,12 +84,12 @@ func (c *StepbitCoreClient) DoAuthenticatedRequest(ctx context.Context, method, 
 		reqBody = bodyReader
 	}
 
-	// 1. Try with rotating token
+	// 1. Try with rotating token (only for Core)
 	c.tokenMu.RLock()
 	token := c.rotatingToken
 	c.tokenMu.RUnlock()
 
-	if token != "" {
+	if token != "" && strings.Contains(url, c.BaseURL) {
 		req, _ := http.NewRequestWithContext(ctx, method, url, reqBody)
 		req.Header.Set("Authorization", "Bearer "+token)
 		if reqBody != nil {
@@ -105,12 +112,17 @@ func (c *StepbitCoreClient) DoAuthenticatedRequest(ctx context.Context, method, 
 		}
 	}
 
-	// 2. Fallback to Master API Key
+	// 2. Fallback to Master API Key (only for Core)
 	if bodyReader != nil {
 		bodyReader.Seek(0, 0)
 	}
 	req, _ := http.NewRequestWithContext(ctx, method, url, reqBody)
-	req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	
+	// Only add Auth if we are talking to Stepbit Core
+	if strings.Contains(url, c.BaseURL) {
+		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	}
+	
 	if reqBody != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -120,7 +132,7 @@ func (c *StepbitCoreClient) DoAuthenticatedRequest(ctx context.Context, method, 
 		return nil, err
 	}
 
-	if resp.StatusCode == http.StatusOK {
+	if resp.StatusCode == http.StatusOK && strings.Contains(url, c.BaseURL) {
 		c.updateToken(resp)
 	}
 
@@ -153,7 +165,13 @@ func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Messag
 		body["max_tokens"] = options.MaxTokens
 	}
 
-	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, "/v1/chat/completions", body)
+	baseURL := c.BaseURL
+	if options.BaseURL != "" {
+		baseURL = options.BaseURL
+	}
+	url := baseURL + "/v1/chat/completions"
+
+	resp, err := c.DoAuthenticatedRequestWithURL(ctx, http.MethodPost, url, body)
 	if err != nil {
 		return err
 	}
@@ -218,26 +236,46 @@ func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Messag
 
 // GetMCPTools fetches the list of MCP tools from stepbit-core
 func (c *StepbitCoreClient) GetMCPTools(ctx context.Context) ([]map[string]interface{}, error) {
-	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, "/llm/mcp/tools", nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	// Try /v1/mcp/tools first (Rust) then /llm/mcp/tools (legacy)
+	var lastErr error
+	for _, path := range []string{"/v1/mcp/tools", "/llm/mcp/tools"} {
+		resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, path, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("stepbit-core returned status %d", resp.StatusCode)
-	}
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("status %d", resp.StatusCode)
+			continue
+		}
 
-	var tools []map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&tools); err != nil {
-		return nil, err
+		var result struct {
+			Tools []map[string]interface{} `json:"tools"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			lastErr = err
+			continue
+		}
+		return result.Tools, nil
 	}
-	return tools, nil
+	return []map[string]interface{}{}, lastErr
 }
 
 // ExecuteReasoning executes a reasoning graph synchronously
-func (c *StepbitCoreClient) ExecuteReasoning(ctx context.Context, graph interface{}) (interface{}, error) {
-	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, "/llm/reasoning/execute", graph)
+func (c *StepbitCoreClient) ExecuteReasoning(ctx context.Context, graph interface{}) (map[string]interface{}, error) {
+	// Try /v1 prefix first (Rust)
+	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, "/v1/reasoning/execute", graph)
+	
+	// Fallback to legacy (/llm/) ONLY if we got a 404 or a connection error
+	if err != nil || (resp != nil && resp.StatusCode == http.StatusNotFound) {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		resp, err = c.DoAuthenticatedRequest(ctx, http.MethodPost, "/llm/reasoning/execute", graph)
+	}
+	
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +286,7 @@ func (c *StepbitCoreClient) ExecuteReasoning(ctx context.Context, graph interfac
 		return nil, fmt.Errorf("reasoning execution failed (%d): %s", resp.StatusCode, string(body))
 	}
 
-	var result interface{}
+	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
@@ -256,8 +294,18 @@ func (c *StepbitCoreClient) ExecuteReasoning(ctx context.Context, graph interfac
 }
 
 // ExecuteReasoningStream opens an SSE stream for reasoning execution and returns the raw response
-func (c *StepbitCoreClient) ExecuteReasoningStream(ctx context.Context, graph interface{}) (*http.Response, error) {
-	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, "/llm/reasoning/execute/stream", graph)
+func (c *StepbitCoreClient) ExecuteReasoningStream(ctx context.Context, graph interface{}) (io.ReadCloser, error) {
+	// Try /v1 prefix first (Rust)
+	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, "/v1/reasoning/execute/stream", graph)
+	
+	// Fallback to legacy (/llm/) ONLY if we got a 404 or a connection error
+	if err != nil || (resp != nil && resp.StatusCode == http.StatusNotFound) {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		resp, err = c.DoAuthenticatedRequest(ctx, http.MethodPost, "/llm/reasoning/execute/stream", graph)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +313,7 @@ func (c *StepbitCoreClient) ExecuteReasoningStream(ctx context.Context, graph in
 		resp.Body.Close()
 		return nil, fmt.Errorf("reasoning stream failed with status %d", resp.StatusCode)
 	}
-	return resp, nil
+	return resp.Body, nil
 }
 
 // CheckHealth verifies if stepbit-core is reachable
@@ -273,21 +321,34 @@ func (c *StepbitCoreClient) CheckHealth(ctx context.Context) (bool, string) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/health", nil)
-	if err != nil {
-		return false, "Failed to create request"
+	// Try /ready first (Rust core) then /health (Python core fallback)
+	endpoints := []string{"/ready", "/health"}
+	var lastErr error
+
+	for _, ep := range endpoints {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+ep, nil)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		resp, err := c.client.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			return true, "stepbit-core is online"
+		}
+		lastErr = fmt.Errorf("endpoint %s returned status %d", ep, resp.StatusCode)
 	}
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return false, "stepbit-core unreachable"
+	if lastErr != nil {
+		return false, fmt.Sprintf("stepbit-core unreachable: %v", lastErr)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		return true, "stepbit-core is online"
-	}
-	return false, fmt.Sprintf("stepbit-core returned status %d", resp.StatusCode)
+	return false, "stepbit-core unreachable"
 }
 
 // DiscoverModels fetches available models from stepbit-core

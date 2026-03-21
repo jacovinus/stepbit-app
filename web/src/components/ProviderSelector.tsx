@@ -140,7 +140,7 @@ export const ProviderSelector = () => {
                                 </button>
                             ))}
 
-                            {activeDetail && activeDetail.supported_models.length > 0 && (
+                            {activeDetail && activeDetail.supported_models?.length > 0 && (
                                 <div className="mt-2 pt-2 border-t border-gruv-dark-4/20">
                                     <div className="px-3 py-2 text-[10px] text-gruv-light-4 font-mono uppercase tracking-widest mb-1">
                                         Available Models
