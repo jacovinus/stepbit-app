@@ -2,8 +2,8 @@ package main
 
 import (
 	"log"
-	"os"
 	"stepbit-app/internal/api"
+	"stepbit-app/internal/config/services"
 	"stepbit-app/internal/core"
 	"stepbit-app/internal/db"
 
@@ -13,43 +13,28 @@ import (
 func main() {
 	// 1. Load configuration (from .env or ENV)
 	godotenv.Load()
-
-	dbPath := os.Getenv("STEPBIT_DATABASE_PATH")
-	if dbPath == "" {
-		dbPath = "./chat.db"
-	}
-
-	coreURL := os.Getenv("STEPBIT_CORE_URL")
-	if coreURL == "" {
-		coreURL = "http://localhost:3000"
-	}
-
-	apiKey := os.Getenv("STEPBIT_API_KEY")
-	if apiKey == "" {
-		apiKey = "sk-dev-key-123"
-	}
-
-	skillsDir := os.Getenv("STEPBIT_SKILLS_DIR")
-	if skillsDir == "" {
-		skillsDir = "./skills"
+	
+	config, err := services.LoadConfig("config.yaml")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	// 2. Initialize Services
-	database, err := db.NewDbService(dbPath)
+	database, err := db.NewDbService(config.Database.Path)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer database.Close()
 
-	if err := database.PreloadSkillsFromDir(skillsDir); err != nil {
+	if err := database.PreloadSkillsFromDir(config.Skills.Dir); err != nil {
 		log.Printf("Warning: Skill preloading failed: %v", err)
 	}
 
-	coreClient := core.NewStepbitCoreClient(coreURL, apiKey, "mistral-7b")
+	coreClient := core.NewStepbitCoreClient(config.Providers.StepbitCore.URL, config.Server.Key, "mistral-7b")
 
 	// 3. Setup Router and Start Server
-	router := api.NewRouter(coreClient, database, apiKey)
+	router := api.NewRouter(coreClient, database, config)
 
-	log.Printf("Stepbit-App (Go) listening on :8080")
-	log.Fatal(router.App.Listen(":8080"))
+	log.Printf("Stepbit-App (Go) listening on %s", config.Server.Port)
+	log.Fatal(router.App.Listen(config.Server.Port))
 }

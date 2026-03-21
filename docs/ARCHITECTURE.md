@@ -1,86 +1,34 @@
-# 🏗️ Stepbit Architecture
+# 🏗️ Detailed Architecture - Stepbit Go
 
-Stepbit is a high-performance LLM orchestration platform designed with a modular, pluggable architecture. It bridges the gap between raw LLM capabilities and premium, user-centric AI applications.
+This document describes the internal engineering and architectural patterns used in the Go implementation of Stepbit.
 
----
+## 🏛️ Architectural Layers
 
-## 🛰️ System Overview
+### 1. Presentation Layer (`internal/api`)
+The entry point of the application. It uses **Fiber** for its unmatched performance and zero-allocation routing.
+- **Middleware**: Handles CORS, Logging, and Master-Key authentication.
+- **Module Registration**: Each internal module registers its sub-routes dynamically, keeping the main router clean.
 
-Stepbit follows a modern client-server architecture:
+### 2. Feature Modules (`internal/[feature]`)
+Each feature (Session, Skill, Pipeline, etc.) is a complete, self-contained unit:
+- **Models**: Defines the data structures and API requests/responses.
+- **Services**: The implementation of business logic and database access.
+- **Handlers**: Adapts the service logic to the HTTP/WebSocket layer.
 
-- **Visual Layer (Frontend)**: A premium React 19 / Vite interface (Port 5173) that provides the Command Center, reasoning graphs, and real-time data visualizations.
-- **Backend API (Rust)**: Built with `actix-web` (Port 8080), it handles orchestration, database management, and LLM provider communication.
-- **Reasoning Core (Local stepbit-core)**: Stepbit is designed to run alongside `stepbit-core` (Port 8081), providing a "Local-First" cognitive stack.
+### 3. Storage Engine (`internal/storage/duckdb`)
+Stepbit leverages **DuckDB** as its primary data store.
+- **DuckDB-Specific Tuning**: Optimized schema using sequences and BIGINT for high-throughput apppend-only trace logging.
+- **Relational Consistency**: Maintains standard ACID properties for sessions and skills.
 
----
+## ⚡ Performance Optimization
 
-## 🧩 Core Components
+- **Zero-Copy Streaming**: Tokens are streamed from the LLM core directly to the web client using `bufio.Writer` and SSE, minimizing memory pressure.
+- **Concurrent Execution**: Multi-threaded reasoning tasks utilize Go's lightweight goroutines for parallel tool execution.
+- **Analytical Snapshotting**: The architecture supports DuckDB's `CHECKPOINT` and `COPY` features to allow external tools to analyze chat history without locking the main DB.
 
-### 1. API Layer (`src/api/`)
-Handles the communication between the frontend and the core engine.
-- **REST Endpoints**: CRUD operations for sessions, messages, skills, and pipelines.
-- **WebSocket Engine**: Real-time streaming of tokens and reasoning traces with cancellation support.
-- **OpenAI Proxy**: Provides a `/v1/chat/completions` endpoint for compatibility with OpenAI-compatible tools.
+## 🛠️ Best Practices
 
-### 2. LLM Engine (`src/llm/`)
-A pluggable provider system that abstracts the complexity of different AI backends:
-- **Core (Local Reasoning)**: `stepbit-core` integration. This is the **primary, mission-critical connection** that enables the Pipelines Hub, Reasoning Graphs, and advanced MCP tools.
-- **Local Fallbacks**: Ollama for standard chat tasks.
-- **Cloud Providers**: OpenAI, Anthropic, GitHub Copilot.
-
-### 3. Data Layer (`src/db/`)
-Powered by **DuckDB**, a high-performance analytical database.
-- **Local Memory**: Persistent storage for all conversations in `chat.db`.
-- **Analytical Snapshotting**: Allows `stepbit-core` to perform non-blocking analysis on live data by attaching read-only snapshots.
-
-### 4. Reasoning Engine & Pipelines (`src/llm/stepbit-core.rs`)
-The "Cognitive Core" of Stepbit:
-- **DAG Executor**: A Directed Acyclic Graph architecture that manages node lifecycle and data flow.
-- **Cognitive Pipelines**: Deterministic, multi-stage workflows (Search -> Analyze -> Synthesize).
-- **Variable Resolution**: Supports `{{node_id.output}}` syntax for chaining outputs between nodes.
-
----
-
-## 🔄 Data Flow
-
-```mermaid
-sequenceDiagram
-    participant User as 👤 User
-    participant UI as 🎨 Visual Layer (5173)
-    participant Stepbit as 🦀 Backend API (8080)
-    participant DB as 🦆 DuckDB (chat.db)
-    participant stepbit-core as 🧠 stepbit-core (8081)
-    
-    User->>UI: Ask "Analyze my history"
-    UI->>Stepbit: POST /pipelines/execute
-    Stepbit->>DB: Fetch Session Context
-    Stepbit->>stepbit-core: Trigger Pipeline Request
-    Note over stepbit-core: Detects DB Lock
-    stepbit-core->>DB: Attach Snapshot (Read-Only)
-    stepbit-core->>stepbit-core: Execute reasoning stages
-    stepbit-core-->>Stepbit: SSE Stream Results
-    Stepbit-->>UI: Forward Stream
-    UI-->>User: Visual Reasoning Trace
-```
-
----
-
-## 🛡️ Security Architecture
-
-### Rolling Handshake
-Internal communication between Stepbit and stepbit-core is protected by a rotating token mechanism:
-1. **Initial Handshake**: Stepbit uses the master `API_KEY`.
-2. **Token Rotation**: stepbit-core returns a new `X-Next-Token` in every response header.
-3. **Chained Authentication**: The next request must use the new token, preventing replay attacks.
-
----
-
-## 🎨 Visualization Layer
-Stepbit interprets specific structured outputs from LLMs to render:
-- **Interactive Charts**: Line, Bar, and Area charts for data trends.
-- **Live SVGs**: Dynamic graphic generation.
-- **Code Previews**: Live HTML/CSS rendering for UI experimentation.
-
----
-
-Built with performance and aesthetics as first-class citizens.
+- **Package Level Isolation**: No circular dependencies. Modules communicate through clearly defined API boundaries.
+- **Consistent Error Handling**: Follows standard Go error wrapping and context propagation (`context.Context`) across all layers.
+- **Configuration over Hardcoding**: Centralized configuration service (`internal/config`) manages provider states dynamically.
+- **Schema Management**: Schemas are managed centrally in `internal/storage/duckdb/duckdb.go`, ensuring a single source of truth for the database layout.

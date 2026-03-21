@@ -2,7 +2,7 @@ package db
 
 import (
 	"os"
-	"stepbit-app/internal/models"
+	sessionModels "stepbit-app/internal/session/models"
 	"testing"
 
 	"github.com/google/uuid"
@@ -20,9 +20,9 @@ func TestDbService_Integration(t *testing.T) {
 
 	// 1. Test Session
 	sessionID := uuid.New()
-	session := &models.Session{
+	session := &sessionModels.Session{
 		ID:       sessionID,
-		Name:     "Test Session",
+		Title:    "Test Session",
 		Metadata: map[string]interface{}{"foo": "bar"},
 	}
 
@@ -34,12 +34,12 @@ func TestDbService_Integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSession failed: %v", err)
 	}
-	if gotSession.Name != "Test Session" {
-		t.Errorf("Expected name 'Test Session', got '%s'", gotSession.Name)
+	if gotSession.Title != "Test Session" {
+		t.Errorf("Expected title 'Test Session', got '%s'", gotSession.Title)
 	}
 
 	// 2. Test Message
-	msg := &models.Message{
+	msg := &sessionModels.Message{
 		SessionID: sessionID,
 		Role:      "user",
 		Content:   "Hello DuckDB",
@@ -50,7 +50,7 @@ func TestDbService_Integration(t *testing.T) {
 		t.Fatalf("InsertMessage failed: %v", err)
 	}
 
-	messages, err := service.GetMessages(sessionID.String(), 10, 0)
+	messages, err := service.GetMessages(sessionID.String())
 	if err != nil {
 		t.Fatalf("GetMessages failed: %v", err)
 	}

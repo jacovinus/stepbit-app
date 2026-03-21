@@ -1,0 +1,35 @@
+package services
+
+import (
+	"context"
+	"io"
+	"stepbit-app/internal/core"
+)
+
+type LlmService struct {
+	coreClient *core.StepbitCoreClient
+}
+
+func NewLlmService(coreClient *core.StepbitCoreClient) *LlmService {
+	return &LlmService{coreClient: coreClient}
+}
+
+func (s *LlmService) GetMCPTools(ctx context.Context) (interface{}, error) {
+	return s.coreClient.GetMCPTools(ctx)
+}
+
+func (s *LlmService) ExecuteReasoning(ctx context.Context, graph interface{}) (interface{}, error) {
+	return s.coreClient.ExecuteReasoning(ctx, graph)
+}
+
+func (s *LlmService) ExecuteReasoningStream(ctx context.Context, graph interface{}) (io.ReadCloser, error) {
+	return s.coreClient.ExecuteReasoningStream(ctx, graph)
+}
+
+func (s *LlmService) CheckCoreHealth(ctx context.Context) (bool, string) {
+	return s.coreClient.CheckHealth(ctx)
+}
+
+func (s *LlmService) DiscoverModels(ctx context.Context) ([]string, error) {
+	return s.coreClient.DiscoverModels(ctx)
+}

@@ -1,0 +1,15 @@
+database:
+  path: "./chat.db"
+
+server:
+  port: ":8080"
+  key: "sk-dev-key-123"
+
+providers:
+  ollama:
+    url: "http://localhost:11434"
+  stepbit_core:
+    url: "http://localhost:3000"
+
+skills:
+  dir: "./skills"

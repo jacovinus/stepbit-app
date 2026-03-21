@@ -223,7 +223,7 @@ export const Chat = () => {
     // Mutations
     const updateSession = useMutation({
         mutationFn: ({ id, name, metadata }: { id: string, name?: string, metadata?: any }) =>
-            sessionsApi.update(id, { name, metadata }),
+            sessionsApi.update(id, { title: name, metadata }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['sessions'] });
             setIsEditingName(false);
@@ -232,7 +232,7 @@ export const Chat = () => {
     });
 
     const createSession = useMutation({
-        mutationFn: (name: string) => sessionsApi.create({ name }),
+        mutationFn: (name: string) => sessionsApi.create({ title: name }),
         onSuccess: (newSession) => {
             queryClient.invalidateQueries({ queryKey: ['sessions'] });
             setActiveSessionId(newSession.id);
@@ -268,7 +268,7 @@ export const Chat = () => {
             const url = window.URL.createObjectURL(new Blob([blob]));
             const a = document.createElement('a');
             a.href = url;
-            a.download = `session_${activeSession?.name || activeSessionId}.txt`;
+            a.download = `session_${activeSession?.title || activeSession?.name || activeSessionId}.txt`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -322,7 +322,7 @@ export const Chat = () => {
             <div className="w-64 shrink-0 glass rounded-2xl flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-gruv-dark-4/20 flex flex-col gap-2">
                     <button
-                        onClick={() => createSession.mutate(`New Session ${sessions?.length || 0 + 1}`)}
+                        onClick={() => createSession.mutate(`New Session ${sessions?.length ? sessions.length + 1 : 1}`)}
                         className="w-full btn-primary flex items-center justify-center gap-2 py-2 text-sm"
                     >
                         <Plus className="w-4 h-4" />
@@ -356,7 +356,7 @@ export const Chat = () => {
                                     activeSessionId === s.id ? "bg-gruv-dark-3 text-monokai-aqua" : "hover:bg-gruv-dark-3/50 text-gruv-light-4"
                                 )}
                             >
-                                <span className="truncate text-sm font-semibold">{s.name}</span>
+                                <span className="truncate text-sm font-semibold">{s.title || s.name}</span>
                                 <Trash2
                                     className="w-4 h-4 opacity-0 group-hover:opacity-100 hover:text-monokai-pink transition-all"
                                     onClick={(e) => { e.stopPropagation(); deleteSession.mutate(s.id); }}
@@ -400,10 +400,10 @@ export const Chat = () => {
                                         className="font-bold flex items-center gap-2 group cursor-pointer"
                                         onClick={() => {
                                             setIsEditingName(true);
-                                            setEditingNameValue(activeSession?.name || '');
+                                            setEditingNameValue(activeSession?.title || activeSession?.name || '');
                                         }}
                                     >
-                                        {activeSession?.name}
+                                        {activeSession?.title || activeSession?.name}
                                         <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                     </h2>
                                 )}

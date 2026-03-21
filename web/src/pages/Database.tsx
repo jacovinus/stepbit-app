@@ -56,7 +56,7 @@ export const Database = () => {
                                 sessions?.map((s: Session) => (
                                     <tr key={s.id} className="hover:bg-gruv-dark-4/10 transition-colors group">
                                         <td className="p-4 border-b border-gruv-dark-4/10 text-monokai-aqua truncate max-w-[120px]">{s.id}</td>
-                                        <td className="p-4 border-b border-gruv-dark-4/10 text-gruv-light-2 font-semibold font-sans">{s.name}</td>
+                                        <td className="p-4 border-b border-gruv-dark-4/10 text-gruv-light-2 font-semibold font-sans">{s.title || s.name || 'Untitled'}</td>
                                         <td className="p-4 border-b border-gruv-dark-4/10 text-gruv-light-4">{new Date(s.created_at).toLocaleString()}</td>
                                         <td className="p-4 border-b border-gruv-dark-4/10 text-monokai-purple truncate max-w-[150px]">
                                             {JSON.stringify(s.metadata)}
