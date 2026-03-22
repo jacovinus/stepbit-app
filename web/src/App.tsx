@@ -13,6 +13,7 @@ import Pipelines from './pages/Pipelines';
 import ScheduledJobs from './pages/ScheduledJobs';
 import Triggers from './pages/Triggers';
 import ExecutionHistory from './pages/ExecutionHistory';
+import Goals from './pages/Goals';
 
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ function App() {
             <Route path="scheduled-jobs" element={<ScheduledJobs />} />
             <Route path="triggers" element={<Triggers />} />
             <Route path="executions" element={<ExecutionHistory />} />
+            <Route path="goals" element={<Goals />} />
             <Route path="db-explorer" element={<DatabaseExplorer />} />
             <Route path="settings" element={<Settings />} />
           </Route>

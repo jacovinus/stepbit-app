@@ -21,27 +21,27 @@ import {
 } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, color, isLoading }: any) => (
-    <div className="glass p-6 rounded-2xl flex flex-col gap-4 hover:border-gruv-light-4/50 transition-colors">
+    <div className="glass p-4 rounded-xs flex flex-col gap-3 hover:border-gruv-light-4/50 transition-colors">
         <div className="flex justify-between items-start">
-            <div className={`p-3 rounded-xl bg-${color}/10 text-${color}`}>
-                <Icon className="w-6 h-6" />
+            <div className={`p-2 rounded-xs bg-${color}/10 text-${color}`}>
+                <Icon className="w-4 h-4" />
             </div>
         </div>
         <div>
-            <p className="text-gruv-light-4 text-sm font-semibold uppercase tracking-wider">{title}</p>
+            <p className="text-gruv-light-4 text-[11px] font-semibold uppercase tracking-wider">{title}</p>
             {isLoading ? (
-                <div className="h-9 flex items-center"><Loader2 className="w-5 h-5 animate-spin text-gruv-light-4" /></div>
+                <div className="h-7 flex items-center"><Loader2 className="w-4 h-4 animate-spin text-gruv-light-4" /></div>
             ) : (
-                <h3 className="text-3xl font-bold mt-1">{value}</h3>
+                <h3 className="text-xl font-semibold mt-1">{value}</h3>
             )}
         </div>
     </div>
 );
 
 const RuntimeRow = ({ label, value, accent = 'text-gruv-light-1' }: { label: string; value: string; accent?: string }) => (
-    <div className="rounded-xl border border-white/10 bg-gruv-dark-4/10 p-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-gruv-light-4">{label}</p>
-        <p className={`mt-2 text-sm font-semibold break-words ${accent}`}>{value}</p>
+    <div className="rounded-xs border border-white/10 bg-gruv-dark-4/10 p-3">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">{label}</p>
+        <p className={`mt-1.5 text-xs font-semibold break-words ${accent}`}>{value}</p>
     </div>
 );
 
@@ -79,13 +79,13 @@ export const Dashboard = () => {
     const safeSessions = Array.isArray(sessions) ? sessions : [];
 
     return (
-        <div className="flex flex-col gap-8">
-            <header className="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
+        <div className="flex flex-col gap-5">
+            <header className="flex flex-col xl:flex-row xl:items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-bold">System Overview</h1>
-                    <p className="text-gruv-light-4">Real-time performance metrics, readiness, and runtime visibility.</p>
+                    <h1 className="text-2xl font-semibold">System Overview</h1>
+                    <p className="text-xs text-gruv-light-4">Real-time performance metrics, readiness, and runtime visibility.</p>
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
                     <Tooltip content={health.apiConnected ? 'API is responding correctly' : 'Critical: API unreachable'}>
                         <div className={cn(
                             'px-3 py-1.5 rounded-full border flex items-center gap-2 font-mono text-xs transition-all',
@@ -131,35 +131,35 @@ export const Dashboard = () => {
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                 <StatCard title="Total Sessions" value={formatNumber(stats?.total_sessions || 0)} icon={Layers} color="monokai-aqua" isLoading={statsLoading} />
                 <StatCard title="Total Messages" value={formatNumber(stats?.total_messages || 0)} icon={MessageCircle} color="monokai-pink" isLoading={statsLoading} />
                 <StatCard title="Tokens Used" value={formatNumber(stats?.total_tokens || 0)} icon={Zap} color="monokai-purple" isLoading={statsLoading} />
                 <StatCard title="DB Storage" value={formatBytes(stats?.db_size_bytes || 0)} icon={HardDrive} color="gruv-yellow" isLoading={statsLoading} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                 <StatCard title="Core Active Sessions" value={formatNumber(core.metrics.active_sessions || 0)} icon={Cpu} color="monokai-aqua" isLoading={core.loading} />
                 <StatCard title="Core Requests" value={formatNumber(core.metrics.requests_total || 0)} icon={Activity} color="monokai-green" isLoading={core.loading} />
                 <StatCard title="Core Tokens" value={formatNumber(core.metrics.tokens_generated_total || 0)} icon={Zap} color="monokai-pink" isLoading={core.loading} />
                 <StatCard title="Avg Token Latency" value={`${(core.metrics.token_latency_avg_ms || 0).toFixed(1)} ms`} icon={Gauge} color="monokai-orange" isLoading={core.loading} />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="glass p-8 rounded-2xl min-h-80 flex flex-col">
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                        <Activity className="text-monokai-aqua w-5 h-5" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="glass p-4 rounded-xs min-h-72 flex flex-col">
+                    <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                        <Activity className="text-monokai-aqua w-4 h-4" />
                         Memory Breakdown
                     </h3>
-                    <div className="flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="flex flex-col gap-2 overflow-y-auto pr-1 custom-scrollbar">
                         {statsLoading ? (
                             <div className="flex justify-center p-8"><Loader2 className="animate-spin text-monokai-aqua" /></div>
                         ) : stats?.memory_usage && stats.memory_usage.length > 0 ? (
                             stats.memory_usage
                                 .sort((a: MemoryUsageEntry, b: MemoryUsageEntry) => b.usage_bytes - a.usage_bytes)
                                 .map((m: MemoryUsageEntry, idx: number) => (
-                                    <div key={idx} className="flex flex-col gap-1.5 p-3 bg-gruv-dark-4/10 rounded-xl border border-gruv-dark-4/20">
-                                        <div className="flex justify-between items-center text-xs font-mono uppercase tracking-wider text-gruv-light-4">
+                                    <div key={idx} className="flex flex-col gap-1.5 p-2.5 bg-gruv-dark-4/10 rounded-xs border border-gruv-dark-4/20">
+                                        <div className="flex justify-between items-center text-[10px] font-mono uppercase tracking-wider text-gruv-light-4">
                                             <span>{m.tag?.replace(/_/g, ' ') || 'SYSTEM'}</span>
                                             <span className="text-monokai-aqua">{formatBytes(m.usage_bytes)}</span>
                                         </div>
@@ -175,40 +175,40 @@ export const Dashboard = () => {
                                 ))
                         ) : (
                             <div className="flex-grow flex flex-col items-center justify-center text-gruv-light-4 opacity-50">
-                                <Activity className="w-10 h-10 mb-2 opacity-20" />
-                                <p className="text-sm font-mono">No memory data available</p>
+                                <Activity className="w-8 h-8 mb-2 opacity-20" />
+                                <p className="text-xs font-mono">No memory data available</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="glass p-8 rounded-2xl min-h-80 flex flex-col">
-                    <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                        <CheckCircle2 className="text-monokai-green w-5 h-5" />
+                <div className="glass p-4 rounded-xs min-h-72 flex flex-col">
+                    <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                        <CheckCircle2 className="text-monokai-green w-4 h-4" />
                         Core Runtime
                     </h3>
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-3">
                         <RuntimeRow label="Connectivity" value={core.online ? 'Online' : 'Offline'} accent={core.online ? 'text-monokai-green' : 'text-monokai-pink'} />
                         <RuntimeRow label="Readiness" value={core.ready ? 'Ready' : 'Not Ready'} accent={core.ready ? 'text-monokai-green' : 'text-monokai-orange'} />
                         <RuntimeRow label="Active Model" value={core.active_model || 'Unavailable'} />
                         <RuntimeRow label="Discovered Models" value={core.supported_models.length ? core.supported_models.join(', ') : 'None detected'} />
-                        <div className="rounded-xl border border-white/10 bg-gruv-dark-4/10 p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Clock className="w-4 h-4 text-monokai-purple" />
-                                <span className="text-xs uppercase tracking-[0.18em] text-gruv-light-4">Core Message</span>
+                        <div className="rounded-xs border border-white/10 bg-gruv-dark-4/10 p-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <Clock className="w-3.5 h-3.5 text-monokai-purple" />
+                                <span className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Core Message</span>
                             </div>
-                            <p className="text-sm text-gruv-light-2">{core.message}</p>
+                            <p className="text-xs text-gruv-light-2">{core.message}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="glass p-8 rounded-2xl min-h-80 flex flex-col">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                    <MessageCircle className="text-monokai-purple w-5 h-5" />
+            <div className="glass p-4 rounded-xs min-h-72 flex flex-col">
+                <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                    <MessageCircle className="text-monokai-purple w-4 h-4" />
                     Recent Sessions
                 </h3>
-                <div className="flex flex-col gap-4 overflow-y-auto">
+                <div className="flex flex-col gap-2 overflow-y-auto">
                     {sessionsLoading ? (
                         <div className="flex justify-center p-8"><Loader2 className="animate-spin text-monokai-purple" /></div>
                     ) : safeSessions.length > 0 ? (
@@ -216,25 +216,25 @@ export const Dashboard = () => {
                             <a
                                 key={s.id}
                                 href={`/chat?session=${s.id}`}
-                                className="flex items-center gap-4 p-3 hover:bg-gruv-dark-4/20 rounded-xl transition-colors cursor-pointer"
+                                className="flex items-center gap-3 p-2 hover:bg-gruv-dark-4/20 rounded-xs transition-colors cursor-pointer"
                                 onClick={(e) => {
                                     e.preventDefault();
                                     window.location.href = `/chat?session=${s.id}`;
                                 }}
                             >
-                                <div className="w-10 h-10 rounded-full bg-gruv-dark-4 flex items-center justify-center">
-                                    <MessageCircle className="w-5 h-5 text-gruv-light-1" />
+                                <div className="w-8 h-8 rounded-full bg-gruv-dark-4 flex items-center justify-center">
+                                    <MessageCircle className="w-4 h-4 text-gruv-light-1" />
                                 </div>
                                 <div className="flex-grow min-w-0">
-                                    <p className="font-semibold text-sm truncate">{s.title || s.name || 'Untitled Session'}</p>
-                                    <p className="text-xs text-gruv-light-4">{new Date(s.created_at).toLocaleDateString()} • {s.metadata?.message_count || 0} messages</p>
+                                    <p className="font-semibold text-xs truncate">{s.title || s.name || 'Untitled Session'}</p>
+                                    <p className="text-[11px] text-gruv-light-4">{new Date(s.created_at).toLocaleDateString()} • {s.metadata?.message_count || 0} messages</p>
                                 </div>
                             </a>
                         ))
                     ) : (
                         <div className="flex-grow flex flex-col items-center justify-center text-gruv-light-4 opacity-50">
-                            <MessageCircle className="w-10 h-10 mb-2 opacity-20" />
-                            <p className="text-sm font-mono">No recent activity</p>
+                            <MessageCircle className="w-8 h-8 mb-2 opacity-20" />
+                            <p className="text-xs font-mono">No recent activity</p>
                         </div>
                     )}
                 </div>

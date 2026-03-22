@@ -46,6 +46,52 @@ Executes a pre-defined pipeline by its database ID.
 
 ---
 
+## 🎯 Goal Mode API
+
+Execute a high-level objective through a planner-generated ephemeral pipeline.
+
+### `POST /api/goals/execute`
+Builds a temporary pipeline with `planner_stage` and `synthesis_stage`, sends it to `stepbit-core`, and records the execution locally in `Execution History`.
+
+- **Headers**: `Content-Type: application/json`
+- **Body**:
+  ```json
+  {
+    "goal": "Investigate the latest failed runs and summarize the likely root causes",
+    "rlm_enabled": false
+  }
+  ```
+- **Response**: `200 OK`
+  ```json
+  {
+    "goal": "Investigate the latest failed runs and summarize the likely root causes",
+    "pipeline": {
+      "name": "goal_mode_planner",
+      "rlm_enabled": false,
+      "stages": [
+        {
+          "stage_type": "planner_stage",
+          "config": {
+            "goal": "Investigate the latest failed runs and summarize the likely root causes"
+          }
+        },
+        {
+          "stage_type": "synthesis_stage",
+          "config": {}
+        }
+      ]
+    },
+    "result": {
+      "final_answer": "Synthesised answer based on ...",
+      "trace": ["PlannerStage: goal '...' decomposed and executed", "SynthesisStage: final answer synthesised"],
+      "tool_calls": [],
+      "intermediate_results": []
+    }
+  }
+  ```
+
+---
+
 ## ⏰ Scheduled Jobs API
 
 Manage recurring executions backed by the `stepbit-core` cron scheduler.
@@ -242,3 +288,34 @@ Returns enriched `stepbit-core` runtime information for the dashboard and operat
 ```
 
 For full request/response schemas, refer to the technical documentation within the `docs/` folder.
+
+---
+
+## 🧾 Execution History API
+
+Read the local audit trail of app-initiated runs.
+
+### `GET /api/executions`
+Lists recent execution records stored in DuckDB.
+
+**Query Params**
+- `limit` default `50`
+- `offset` default `0`
+
+**Response**
+```json
+[
+  {
+    "id": 12,
+    "source_type": "goal",
+    "source_id": "Investigate the latest failed runs",
+    "action_type": "execute_goal",
+    "status": "completed",
+    "request_payload": {},
+    "response_payload": {},
+    "error": null,
+    "created_at": "2026-03-22T10:30:00Z",
+    "completed_at": "2026-03-22T10:30:01Z"
+  }
+]
+```

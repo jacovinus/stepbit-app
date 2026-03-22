@@ -3,6 +3,7 @@
 /dist
 /target
 /bin
+/.gocache
 
 # Frontend
 /web/node_modules

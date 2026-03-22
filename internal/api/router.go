@@ -11,6 +11,7 @@ import (
 	"stepbit-app/internal/db"
 	"stepbit-app/internal/events"
 	"stepbit-app/internal/execution"
+	"stepbit-app/internal/goals"
 	"stepbit-app/internal/llm"
 	"stepbit-app/internal/pipeline"
 	"stepbit-app/internal/session"
@@ -57,6 +58,7 @@ func NewRouter(coreClient *core.StepbitCoreClient, dbService *db.DbService, appC
 	cronModule := cron.NewCronModule(dbService.GetDB(), coreClient)
 	eventsModule := events.NewEventsModule(dbService.GetDB(), coreClient)
 	executionModule := execution.NewExecutionModule(dbService.GetDB())
+	goalsModule := goals.NewGoalsModule(dbService.GetDB(), coreClient)
 	storageModule := storage.NewStorageModule(dbService.GetDB())
 	llmModule := llm.NewLlmModule(coreClient)
 
@@ -107,6 +109,7 @@ func NewRouter(coreClient *core.StepbitCoreClient, dbService *db.DbService, appC
 	cronModule.RegisterRoutes(app)
 	eventsModule.RegisterRoutes(app)
 	executionModule.RegisterRoutes(app)
+	goalsModule.RegisterRoutes(app)
 	storageModule.RegisterRoutes(app)
 	llmModule.RegisterRoutes(app)
 	configModule.RegisterRoutes(app)

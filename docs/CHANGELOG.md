@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Scheduled Jobs UI**: Added a dedicated page for managing `stepbit-core` cron jobs from `stepbit-app`.
 - **Triggers UI**: Added trigger management and manual event publishing for reactive workflows backed by `stepbit-core`.
+- **Goal Mode**: Added a dedicated planner entry point that turns a high-level objective into an ephemeral `planner_stage` + `synthesis_stage` pipeline executed through `stepbit-core`.
+- **Execution History**: Added a local execution audit trail for pipelines, goals, cron actions, trigger actions, and manual events.
 - **Core Ops Dashboard**: Added richer `stepbit-core` runtime visibility, including readiness, active model, discovered models, request totals, token totals, active sessions, and average token latency.
 
 ### Changed
