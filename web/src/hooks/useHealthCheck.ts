@@ -8,6 +8,7 @@ export interface HealthStatus {
     apiConnected: boolean;
     dbConnected: boolean;
     llmosConnected: boolean;
+    llmosReady: boolean;
     isRetrying: boolean;
 }
 
@@ -17,6 +18,7 @@ export const useHealthCheck = (): HealthStatus => {
         apiConnected: true,
         dbConnected: true,
         llmosConnected: false,
+        llmosReady: false,
         isRetrying: false,
     });
 
@@ -29,9 +31,11 @@ export const useHealthCheck = (): HealthStatus => {
                 
                 // Check stepbit-core specifically
                 let llmosConnected = false;
+                let llmosReady = false;
                 try {
                     const llmosRes = await api.get('stepbit-core/status', { timeout: 2000 });
                     llmosConnected = llmosRes.data.online;
+                    llmosReady = llmosRes.data.ready;
                 } catch (e) {
                     console.warn("stepbit-core heath check failed", e);
                 }
@@ -41,6 +45,7 @@ export const useHealthCheck = (): HealthStatus => {
                     apiConnected: data.api === 'connected',
                     dbConnected: data.database === 'connected',
                     llmosConnected,
+                    llmosReady,
                     isRetrying: false,
                 });
             } catch (error) {
@@ -49,6 +54,7 @@ export const useHealthCheck = (): HealthStatus => {
                     apiConnected: false,
                     dbConnected: false,
                     llmosConnected: false,
+                    llmosReady: false,
                     isRetrying: true,
                 });
             }

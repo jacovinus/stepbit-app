@@ -74,3 +74,30 @@ func TestStepbitCoreClient_ChatStreaming(t *testing.T) {
 		t.Errorf("Expected 'Hello world', got '%s'", result)
 	}
 }
+
+func TestParseMetricsSummary(t *testing.T) {
+	metrics := `
+# HELP requests_total Total API requests
+# TYPE requests_total counter
+requests_total 42
+tokens_generated_total 2048
+active_sessions 3
+token_latency_ms_sum 125
+token_latency_ms_count 5
+`
+
+	summary := parseMetricsSummary(metrics)
+
+	if summary.RequestsTotal != 42 {
+		t.Fatalf("expected requests_total 42, got %v", summary.RequestsTotal)
+	}
+	if summary.TokensGenerated != 2048 {
+		t.Fatalf("expected tokens_generated_total 2048, got %v", summary.TokensGenerated)
+	}
+	if summary.ActiveSessions != 3 {
+		t.Fatalf("expected active_sessions 3, got %v", summary.ActiveSessions)
+	}
+	if summary.TokenLatencyAvgMs != 25 {
+		t.Fatalf("expected token_latency_avg_ms 25, got %v", summary.TokenLatencyAvgMs)
+	}
+}

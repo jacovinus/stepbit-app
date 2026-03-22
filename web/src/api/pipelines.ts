@@ -17,7 +17,16 @@ export interface PipelineExecuteResult {
 
 export interface StepbitCoreStatus {
   online: boolean;
+  ready: boolean;
   message: string;
+  active_model: string;
+  supported_models: string[];
+  metrics: {
+    requests_total: number;
+    tokens_generated_total: number;
+    active_sessions: number;
+    token_latency_avg_ms: number;
+  };
 }
 
 export const pipelinesApi = {
@@ -45,8 +54,8 @@ export const pipelinesApi = {
     await client.delete(`/pipelines/${id}`);
   },
 
-  execute: async (id: number, question: string): Promise<PipelineExecuteResult> => {
-    const response = await client.post(`/pipelines/${id}/execute`, { question });
+  execute: async (id: number, question: string, rlmEnabled = false): Promise<PipelineExecuteResult> => {
+    const response = await client.post(`/pipelines/${id}/execute`, { question, rlm_enabled: rlmEnabled });
     return response.data;
   },
 

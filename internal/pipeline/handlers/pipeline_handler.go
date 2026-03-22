@@ -1,21 +1,24 @@
 package handlers
 
 import (
+	"github.com/gofiber/fiber/v2"
 	"stepbit-app/internal/core"
+	executionServices "stepbit-app/internal/execution/services"
 	"stepbit-app/internal/pipeline/models"
 	"stepbit-app/internal/pipeline/services"
-	"github.com/gofiber/fiber/v2"
 )
 
 type PipelineHandler struct {
-	pipelineService *services.PipelineService
-	coreClient     *core.StepbitCoreClient
+	pipelineService  *services.PipelineService
+	executionService *executionServices.ExecutionService
+	coreClient       *core.StepbitCoreClient
 }
 
-func NewPipelineHandler(pipelineService *services.PipelineService, coreClient *core.StepbitCoreClient) *PipelineHandler {
+func NewPipelineHandler(pipelineService *services.PipelineService, executionService *executionServices.ExecutionService, coreClient *core.StepbitCoreClient) *PipelineHandler {
 	return &PipelineHandler{
-		pipelineService: pipelineService,
-		coreClient:     coreClient,
+		pipelineService:  pipelineService,
+		executionService: executionService,
+		coreClient:       coreClient,
 	}
 }
 
@@ -45,7 +48,7 @@ func (h *PipelineHandler) CreatePipeline(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	
+
 	newPipeline, _ := h.pipelineService.GetPipeline(id)
 	return c.Status(fiber.StatusCreated).JSON(newPipeline)
 }
@@ -101,7 +104,8 @@ func (h *PipelineHandler) ExecutePipeline(c *fiber.Ctx) error {
 	}
 
 	var input struct {
-		Question string `json:"question"`
+		Question   string `json:"question"`
+		RlmEnabled bool   `json:"rlm_enabled"`
 	}
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
@@ -109,12 +113,20 @@ func (h *PipelineHandler) ExecutePipeline(c *fiber.Ctx) error {
 
 	// Build the execution payload with pipeline definition + question
 	execPayload := map[string]interface{}{
-		"pipeline":   pipeline.Definition,
-		"question":   input.Question,
-		"model":      h.coreClient.DefaultModel,
+		"pipeline":    pipeline.Definition,
+		"question":    input.Question,
+		"rlm_enabled": input.RlmEnabled,
 	}
 
-	result, err := h.coreClient.ExecuteReasoning(c.Context(), execPayload)
+	runID, runInsertErr := h.executionService.InsertRun("pipeline", c.Params("id"), "execute_pipeline", execPayload)
+	result, err := h.coreClient.ExecutePipeline(c.Context(), execPayload)
+	if runInsertErr == nil {
+		status := "completed"
+		if err != nil {
+			status = "failed"
+		}
+		_ = h.executionService.CompleteRun(runID, status, result, err)
+	}
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 	}

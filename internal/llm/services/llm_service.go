@@ -30,6 +30,10 @@ func (s *LlmService) CheckCoreHealth(ctx context.Context) (bool, string) {
 	return s.coreClient.CheckHealth(ctx)
 }
 
+func (s *LlmService) GetCoreStatus(ctx context.Context) core.CoreStatus {
+	return s.coreClient.GetCoreStatus(ctx)
+}
+
 func (s *LlmService) DiscoverModels(ctx context.Context) ([]string, error) {
 	return s.coreClient.DiscoverModels(ctx)
 }

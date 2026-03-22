@@ -10,6 +10,9 @@ import McpTools from './pages/McpTools';
 import ReasoningPlayground from './pages/ReasoningPlayground';
 import DatabaseExplorer from './pages/DatabaseExplorer';
 import Pipelines from './pages/Pipelines';
+import ScheduledJobs from './pages/ScheduledJobs';
+import Triggers from './pages/Triggers';
+import ExecutionHistory from './pages/ExecutionHistory';
 
 
 const queryClient = new QueryClient();
@@ -27,6 +30,9 @@ function App() {
             <Route path="mcp-tools" element={<McpTools />} />
             <Route path="reasoning" element={<ReasoningPlayground />} />
             <Route path="pipelines" element={<Pipelines />} />
+            <Route path="scheduled-jobs" element={<ScheduledJobs />} />
+            <Route path="triggers" element={<Triggers />} />
+            <Route path="executions" element={<ExecutionHistory />} />
             <Route path="db-explorer" element={<DatabaseExplorer />} />
             <Route path="settings" element={<Settings />} />
           </Route>
