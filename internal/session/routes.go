@@ -45,6 +45,7 @@ func (m *SessionModule) RegisterRoutes(app *fiber.App) {
 	api.Get("/:id", m.SessionHandler.GetSession)
 	api.Put("/:id", m.SessionHandler.UpdateSession)
 	api.Delete("/:id", m.SessionHandler.DeleteSession)
+	api.Delete("/", m.SessionHandler.PurgeChat)
 	api.Get("/:id/messages", m.SessionHandler.GetMessages)
 	api.Get("/:id/export", m.SessionHandler.ExportSession)
 
