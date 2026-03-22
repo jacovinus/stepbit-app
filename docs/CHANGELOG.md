@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SSE Streaming Reasoning**: Implemented end-to-end Server-Sent Events (SSE) support for the Reasoning Playground.
 - **Enhanced Execution Log**: Replaced the small results grid with a vertical, scrollable execution log for high-bandwidth feedback.
 - **Sidebar Revamp**: Expanded the Node Inspector to 450px and added a dedicated formatting viewer for execution results (JSON/Text).
-- **Stream Proxy**: Added an Actix-web proxy to bridge SSE requests from the frontend to the `stepbit-core` engine.
+- **Stream Proxy**: Added a backend SSE proxy to bridge reasoning streams from the frontend to the `stepbit-core` engine.
 
 ### Fixed
 - **Trace Visibility**: Resolved issues where large reasoning outputs were truncated in the UI.
@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Detailed Execution Reporting**: The Pipeline Execution Modal now extracts the full backend error trace.
 - **DuckDB Lock Contention**: Resolved via the new snapshot-fallback attachment mechanism.
-- **Middleware Compatibility**: Resolved issues with Bearer token vs X-API-Key resolution in Actix-web.
+- **Middleware Compatibility**: Resolved issues with Bearer token vs X-API-Key resolution in the backend auth layer.
 
 ## [0.2.0] - 2026-03-13
 
@@ -85,6 +85,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **UI Synchronization**: Aligned polling intervals between Sidebar and Chat (5s) and fixed persistent "Loading..." states with backend default fallbacks.
 
 ### Changed
-- **Database Schema Access**: Made `SCHEMA` string public in `connection.rs` to allow clean-slate re-initialization during purge.
-- **Universal Provider Trait**: Added `default_model` method to `LlmProvider` trait for consistent UI synchronization.
+- **Database Schema Access**: Exposed schema management for clean-slate re-initialization during purge.
+- **Universal Provider Interface**: Added `default_model` behavior for consistent UI synchronization.
 - **Agent Instructions**: Updated `design-system` skill, `frontend-expert` skill, and core `system_prompt` to include Live CSS usage guidelines and visual interactivity standards.

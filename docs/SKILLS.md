@@ -84,4 +84,4 @@ curl -X POST http://localhost:8080/api/skills/fetch-url \
 2. **Versioned Personas**: Create skills like `React Expert v1` and `React Expert v2` to compare subtle variations in model responses.
 3. **Template Blocks**: Store structured templates (e.g., "Bug Report", "Feature Spec") to ensure consistency across your team's outputs.
 
-Built with 🦀 and 🎨 for superior AI orchestration.
+Built with Go, DuckDB, and a lovingly over-designed UI for superior AI orchestration.

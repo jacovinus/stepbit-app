@@ -45,4 +45,4 @@ This document serves as the project's roadmap and "travel journal," documenting 
 - **2026-03-14**: Integrated Cognitive Pipelines and Snapshotting logic.
 - **2026-03-04**: Initialized the Journey. Focused on visual excellence and multi-provider stability.
 
-Built with 🦀 and 🎨 for superior AI orchestration.
+Built with Go, DuckDB, React, and an unreasonable amount of product ambition.
