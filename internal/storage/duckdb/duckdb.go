@@ -100,6 +100,16 @@ func InitSchema(db *sql.DB) error {
 	db.Exec("ALTER TABLE messages ADD COLUMN IF NOT EXISTS metadata JSON DEFAULT '{}'")
 	// Handle tokens -> token_count rename if tokens exists
 	db.Exec("ALTER TABLE messages RENAME COLUMN tokens TO token_count")
+
+	// Skills
+	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS tags VARCHAR DEFAULT ''")
+	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS source_url VARCHAR")
+	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+
+	// Pipelines
+	db.Exec("ALTER TABLE pipelines ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+	db.Exec("ALTER TABLE pipelines ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 	
 	return nil
 }

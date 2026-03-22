@@ -3,14 +3,8 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
 	"stepbit-app/internal/storage/duckdb"
-	"strings"
 	sessionModels "stepbit-app/internal/session/models"
-	skillModels "stepbit-app/internal/skill/models"
-	pipelineModels "stepbit-app/internal/pipeline/models"
 
 	_ "github.com/marcboeker/go-duckdb"
 )
@@ -42,48 +36,6 @@ func (s *DbService) Close() error {
 
 func (s *DbService) Ping() error {
 	return s.db.Ping()
-}
-
-// ─── Skill Repository (Migration needed) ────────────────────────────────────
-
-func (s *DbService) PreloadSkillsFromDir(dir string) error {
-	files, err := os.ReadDir(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil 
-		}
-		return err
-	}
-
-	for _, f := range files {
-		if f.IsDir() || filepath.Ext(f.Name()) != ".md" {
-			continue
-		}
-		
-		path := filepath.Join(dir, f.Name())
-		content, err := os.ReadFile(path)
-		if err != nil {
-			log.Printf("Error reading skill file %s: %v", path, err)
-			continue
-		}
-
-		name := strings.TrimSuffix(f.Name(), ".md")
-		skill := &skillModels.Skill{
-			Name:    name,
-			Content: string(content),
-			Tags:    "default",
-		}
-		
-		// Check if exists
-		var exists bool
-		s.db.QueryRow("SELECT EXISTS(SELECT 1 FROM skills WHERE name = ?)", name).Scan(&exists)
-		if !exists {
-			s.db.Exec("INSERT INTO skills (name, content, tags) VALUES (?, ?, ?)", 
-				skill.Name, skill.Content, skill.Tags)
-			log.Printf("Preloaded skill: %s", name)
-		}
-	}
-	return nil
 }
 
 // ─── Legacy methods that should be moved to Repositories ──────────────────────
@@ -127,7 +79,11 @@ func (s *DbService) UpdateSession(sess *sessionModels.Session) error {
 }
 
 func (s *DbService) DeleteSession(id string) error {
-	_, err := s.db.Exec("DELETE FROM sessions WHERE id = ?", id)
+	_, err := s.db.Exec("DELETE FROM messages WHERE session_id = ?", id)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.Exec("DELETE FROM sessions WHERE id = ?", id)
 	return err
 }
 
@@ -160,17 +116,6 @@ func (s *DbService) GetMessages(sessionID string) ([]sessionModels.Message, erro
 	return messages, nil
 }
 
-func (s *DbService) GetStats() (map[string]interface{}, error) {
-	var sessionCount, messageCount int
-	s.db.QueryRow("SELECT COUNT(*) FROM sessions").Scan(&sessionCount)
-	s.db.QueryRow("SELECT COUNT(*) FROM messages").Scan(&messageCount)
-
-	return map[string]interface{}{
-		"total_sessions": sessionCount,
-		"total_messages": messageCount,
-	}, nil
-}
-
 func (s *DbService) PurgeSessions() error {
 	_, err := s.db.Exec("DELETE FROM messages")
 	if err != nil {
@@ -180,57 +125,20 @@ func (s *DbService) PurgeSessions() error {
 	return err
 }
 
-func (s *DbService) ListPipelines(limit, offset int) ([]pipelineModels.Pipeline, error) {
-	rows, err := s.db.Query("SELECT id, name, definition, created_at, updated_at FROM pipelines LIMIT ? OFFSET ?", limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var pipelines []pipelineModels.Pipeline
-	for rows.Next() {
-		var p pipelineModels.Pipeline
-		if err := rows.Scan(&p.ID, &p.Name, &p.Definition, &p.CreatedAt, &p.UpdatedAt); err != nil {
-			return nil, err
-		}
-		pipelines = append(pipelines, p)
-	}
-	return pipelines, nil
-}
-
-func (s *DbService) InsertPipeline(p *pipelineModels.Pipeline) (int64, error) {
-	res, err := s.db.Exec("INSERT INTO pipelines (name, definition) VALUES (?, ?)", p.Name, p.Definition)
-	if err != nil {
-		return 0, err
-	}
-	return res.LastInsertId()
-}
-
-func (s *DbService) GetPipeline(id int64) (*pipelineModels.Pipeline, error) {
-	var p pipelineModels.Pipeline
-	err := s.db.QueryRow("SELECT id, name, definition, created_at, updated_at FROM pipelines WHERE id = ?", id).
-		Scan(&p.ID, &p.Name, &p.Definition, &p.CreatedAt, &p.UpdatedAt)
-	if err != nil {
-		return nil, err
-	}
-	return &p, nil
-}
-
-func (s *DbService) UpdatePipeline(id int64, p *pipelineModels.Pipeline) error {
-	_, err := s.db.Exec("UPDATE pipelines SET name = ?, definition = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", p.Name, p.Definition, id)
-	return err
-}
-
-func (s *DbService) DeletePipeline(id int64) error {
-	_, err := s.db.Exec("DELETE FROM pipelines WHERE id = ?", id)
-	return err
-}
-
 func (s *DbService) QueryRaw(query string) (*sql.Rows, error) {
 	return s.db.Query(query)
 }
 
 func (s *DbService) CreateSnapshot(path string) error {
-	_, err := s.db.Exec(fmt.Sprintf("CHECKPOINT; COPY FROM (SELECT *) TO '%s' (FORMAT 'PARQUET')", path))
+	// 1. Ensure all data is flushed
+	if _, err := s.db.Exec("CHECKPOINT;"); err != nil {
+		return fmt.Errorf("failed to checkpoint before snapshot: %w", err)
+	}
+
+	// 2. Export database to target directory
+	// In DuckDB, 'path' here should be a directory for EXPORT DATABASE
+	// If it's a file, we should use a different approach or ensure it's a dir.
+	// We'll use the 'COPY TO' approach for a single file if possible, or EXPORT
+	_, err := s.db.Exec(fmt.Sprintf("EXPORT DATABASE '%s' (FORMAT PARQUET);", path))
 	return err
 }

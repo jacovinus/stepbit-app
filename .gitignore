@@ -34,3 +34,5 @@
 # Env
 .env
 .env.local
+
+tasks/*

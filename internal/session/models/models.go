@@ -51,11 +51,12 @@ type UpdateSessionRequest struct {
 type WsClientMessage struct {
 	Type    string `json:"type"`
 	Content string `json:"content"`
+	Stream  *bool  `json:"stream"`
 	Search  *bool  `json:"search"`
 	Reason  *bool  `json:"reason"`
 }
 
 type WsServerMessage struct {
-	Type    string `json:"type"`
+	Type    string `json:"type"` // "chunk", "status", "trace", "done", "error"
 	Content string `json:"content"`
 }

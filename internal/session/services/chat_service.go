@@ -87,13 +87,23 @@ func (s *ChatService) HandleWsChatMessage(ctx context.Context, c *websocket.Conn
 
 	var fullContent strings.Builder
 	for msg := range tokenChan {
-		if msg.Type == "thinking" {
+		switch msg.Type {
+		case "thinking":
 			c.WriteJSON(models.WsServerMessage{Type: "status", Content: msg.Content})
-			continue
+		case "trace":
+			c.WriteJSON(models.WsServerMessage{Type: "trace", Content: msg.Content})
+		case "status":
+			c.WriteJSON(models.WsServerMessage{Type: "status", Content: msg.Content})
+		case "chunk":
+			fullContent.WriteString(msg.Content)
+			c.WriteJSON(models.WsServerMessage{Type: "chunk", Content: msg.Content})
+		default:
+			// Default to chunk for safety if type is unknown but has content
+			if msg.Content != "" {
+				fullContent.WriteString(msg.Content)
+				c.WriteJSON(models.WsServerMessage{Type: "chunk", Content: msg.Content})
+			}
 		}
-		
-		fullContent.WriteString(msg.Content)
-		c.WriteJSON(models.WsServerMessage{Type: "chunk", Content: msg.Content})
 	}
 
 	if err := <-errChan; err != nil {
