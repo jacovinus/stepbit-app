@@ -71,7 +71,7 @@ export const useChatStream = (sessionId: string | null) => {
             ];
           }
         });
-      } else if (data.type === 'status') {
+      } else if (data.type === 'status' || data.type === 'trace') {
         setIsWaiting(true);
         setStatus(data.content);
       } else if (data.type === 'done') {
