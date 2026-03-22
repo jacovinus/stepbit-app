@@ -238,7 +238,7 @@ func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Messag
 
 // GetMCPTools fetches the list of MCP tools from stepbit-core
 func (c *StepbitCoreClient) GetMCPTools(ctx context.Context) ([]map[string]interface{}, error) {
-	// Try /v1/mcp/tools first (Rust) then /llm/mcp/tools (legacy)
+	// Try the current core path first, then fall back to the legacy compatibility path.
 	var lastErr error
 	for _, path := range []string{"/v1/mcp/tools", "/llm/mcp/tools"} {
 		resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, path, nil)
@@ -267,7 +267,7 @@ func (c *StepbitCoreClient) GetMCPTools(ctx context.Context) ([]map[string]inter
 
 // ExecuteReasoning executes a reasoning graph synchronously
 func (c *StepbitCoreClient) ExecuteReasoning(ctx context.Context, graph interface{}) (map[string]interface{}, error) {
-	// Try /v1 prefix first (Rust)
+	// Try the current core path first.
 	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, "/v1/reasoning/execute", graph)
 
 	// Fallback to legacy (/llm/) ONLY if we got a 404 or a connection error
@@ -297,7 +297,7 @@ func (c *StepbitCoreClient) ExecuteReasoning(ctx context.Context, graph interfac
 
 // ExecuteReasoningStream opens an SSE stream for reasoning execution and returns the raw response
 func (c *StepbitCoreClient) ExecuteReasoningStream(ctx context.Context, graph interface{}) (io.ReadCloser, error) {
-	// Try /v1 prefix first (Rust)
+	// Try the current core path first.
 	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, "/v1/reasoning/execute/stream", graph)
 
 	// Fallback to legacy (/llm/) ONLY if we got a 404 or a connection error
@@ -342,7 +342,7 @@ func (c *StepbitCoreClient) CheckHealth(ctx context.Context) (bool, string) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
-	// Try /ready first (Rust core) then /health (Python core fallback)
+	// Try /ready first on modern cores, then /health as a broader compatibility fallback.
 	endpoints := []string{"/ready", "/health"}
 	var lastErr error
 
