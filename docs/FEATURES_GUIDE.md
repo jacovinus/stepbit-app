@@ -73,12 +73,119 @@ Pipelines transform LLMs from simple chat bots into structured reasoning agents.
 ### 🎯 Tutorial: Executing your first Pipeline
 1. Navigate to the **Pipelines** tab.
 2. Click **Execute** on a pipeline card.
-3. Observe the **Reasoning Trace Viewer**: It shows each stage (McpTool -> Verification -> Synthesis) as it happens.
-4. Review the **Final Answer**: A structured response based on the pipeline's logic.
+3. Enter your natural-language question in the execution modal.
+4. Optionally enable **Recursive Language Mode (RLM)** if you want deeper recursive reasoning for harder tasks.
+5. Click **Initiate Sequence**.
+6. Observe the **Reasoning Trace Viewer**: It shows each stage as it happens.
+7. Review the **Final Answer** and, if present, inspect the **Tool Calls** section for structured backend activity.
+
+### 🛠 Step-by-Step: Creating a Pipeline
+1. Open the **Pipelines** page.
+2. Click **Create Pipeline**.
+3. Give the pipeline a name.
+4. Paste a JSON definition with `name`, `rlm_enabled`, and `stages`.
+5. Click **Register Pipeline**.
+6. Use **Run Pipeline** to test it immediately from the UI.
 
 ---
 
-## 7. Internet Search Tool 🌐
+## 7. Scheduled Jobs (Cron Automation) ⏰
+Scheduled Jobs bring recurring automation to the Stepbit UI by proxying the cron scheduler capabilities of `stepbit-core`.
+
+### 🎯 Tutorial: Creating your first Scheduled Job
+1. Open the **Scheduled Jobs** tab.
+2. Fill in a **Job ID** such as `nightly_analysis`.
+3. Enter a standard cron expression such as `0 9 * * 1-5`.
+4. Select an **Execution Type**:
+   - `Pipeline`
+   - `ReasoningGraph`
+5. Set retry values:
+   - `Max Retries`
+   - `Backoff (ms)`
+6. Paste a valid JSON payload.
+7. Click **Create Scheduled Job**.
+8. Verify the job appears in the right-hand list.
+
+### 🎯 Manual Trigger Flow
+1. Go to **Scheduled Jobs**.
+2. Locate the job you want to test.
+3. Click **Run now**.
+4. Refresh the list if needed to inspect `last_run`, `next_retry`, and failure counters.
+
+### 🧠 Practical Notes
+- The UI does not invent schedules; it forwards your cron expression directly to `stepbit-core`.
+- The payload must match the selected execution type.
+- Jobs are managed by `stepbit-core`, so the app acts as an orchestration surface rather than the scheduler itself.
+
+---
+
+## 8. Event Triggers (Reactive Automation) 🔔
+Triggers allow Stepbit to react to incoming events and launch actions automatically through `stepbit-core`.
+
+### 🎯 Tutorial: Creating your first Trigger
+1. Open the **Triggers** tab.
+2. Enter a **Trigger ID** such as `file-processor`.
+3. Set the **Event Type** such as `file.created`.
+4. Paste an optional **Condition JSON**.
+5. Paste an **Action JSON**. Example action types include:
+   - `Goal`
+   - `Pipeline`
+   - `ReasoningGraph`
+6. Click **Create Trigger**.
+7. Confirm the trigger appears in the registered trigger list.
+
+### 🎯 Tutorial: Publishing a Test Event
+1. Stay in the **Triggers** tab.
+2. In **Publish Test Event**, enter the event type you want to simulate.
+3. Paste the JSON payload.
+4. Click **Publish Event**.
+5. Use this flow to validate that your trigger definitions are accepted and ready to react inside `stepbit-core`.
+
+### 🧠 Trigger Design Tips
+- Keep trigger IDs stable and descriptive.
+- Start with simple conditions such as `Equals` before moving to nested `And` / `Or` trees.
+- Use manual event publishing first so you can validate definitions safely before wiring external producers.
+
+---
+
+## 9. Core Ops Dashboard (Readiness & Metrics) 📈
+The dashboard now surfaces richer runtime visibility from `stepbit-core`, not just basic connectivity.
+
+### 🎯 What you can see now
+- API health
+- DuckDB health
+- `stepbit-core` connectivity
+- `stepbit-core` readiness
+- active model
+- discovered models
+- total requests
+- generated tokens
+- active sessions
+- average token latency
+
+### 🎯 Step-by-Step: Checking Core Readiness
+1. Open the **Dashboard**.
+2. Look at the top-right status pills.
+3. If **CORE: READY** is shown, `stepbit-core` is online and ready to serve requests.
+4. If **CORE: WARMING** is shown, the service is reachable but not yet ready.
+5. Review the **Core Runtime** panel for:
+   - readiness state
+   - active model
+   - discovered models
+   - backend status message
+
+### 🎯 Step-by-Step: Inspecting Core Load
+1. Open the **Dashboard**.
+2. Review the runtime stat cards:
+   - `Core Active Sessions`
+   - `Core Requests`
+   - `Core Tokens`
+   - `Avg Token Latency`
+3. Use these together with the memory breakdown and session list to understand current runtime pressure.
+
+---
+
+## 10. Internet Search Tool 🌐
 Give local models access to the real world. Stepbit uses a custom scraper to fetch grounding data.
 
 ### 🛠 Example Prompt
@@ -86,7 +193,7 @@ Give local models access to the real world. Stepbit uses a custom scraper to fet
 
 ---
 
-## 8. High-Fidelity Data Visualization (Charts) 📊
+## 11. High-Fidelity Data Visualization (Charts) 📊
 Stepbit renders interactive charts directly in chat. If the model detects data trends, it will output a JSON block that Stepbit transforms into a premium visualization.
 
 ### 🎯 Supported Types
@@ -96,7 +203,7 @@ Stepbit renders interactive charts directly in chat. If the model detects data t
 
 ---
 
-## 9. Skills Library 📚
+## 12. Skills Library 📚
 A persistent library of reusable prompts. Use it to store personas like "Expert Coder" or "SQL Analyst".
 
 ### 🎯 Step-by-Step: Importing a Persona
@@ -107,7 +214,7 @@ A persistent library of reusable prompts. Use it to store personas like "Expert 
 
 ---
 
-## 10. Live Data Analyst (Snapshot Mode) 📸
+## 13. Live Data Analyst (Snapshot Mode) 📸
 stepbit-core can analyze your active `chat.db` without causing locks or latency in your chat sessions.
 
 ### 🛠 How it works
@@ -118,7 +225,7 @@ stepbit-core can analyze your active `chat.db` without causing locks or latency 
 
 ---
 
-## 11. Reasoning Playground (Advanced DAG) 🛰️
+## 14. Reasoning Playground (Advanced DAG) 🛰️
 The Reasoning Playground is a high-fidelity editor for building ad-hoc AI agents. Unlike the deterministic pipelines, the playground allows for free-form graph sketching.
 
 ### 🎯 Key Interactive Features
@@ -132,9 +239,9 @@ The Reasoning Playground is a high-fidelity editor for building ad-hoc AI agents
 
 ---
 
-## 12. Pluggable Infrastructure 🔌
+## 15. Pluggable Infrastructure 🔌
 Stepbit is designed to work with or without `stepbit-core`. 
 - **Standalone**: All standard chat and search features work.
-- **Integrated**: Connect `stepbit-core` to unlock the **Pipelines Hub**, **Reasoning Graphs**, and **Advanced MCP tools**.
+- **Integrated**: Connect `stepbit-core` to unlock the **Pipelines Hub**, **Scheduled Jobs**, **Triggers**, **Reasoning Graphs**, and **Advanced MCP tools**.
 
 Built with 🦀 and 🎨 for superior AI orchestration.

@@ -46,6 +46,110 @@ Executes a pre-defined pipeline by its database ID.
 
 ---
 
+## ⏰ Scheduled Jobs API
+
+Manage recurring executions backed by the `stepbit-core` cron scheduler.
+
+### `GET /api/cron/jobs`
+Lists all registered cron jobs.
+
+**Response**
+```json
+{
+  "jobs": [
+    {
+      "id": "nightly_analysis",
+      "schedule": "0 2 * * *",
+      "execution_type": "Pipeline",
+      "payload": {},
+      "failure_count": 0,
+      "last_failure_at": null,
+      "next_retry_at": null,
+      "last_run_at": null
+    }
+  ]
+}
+```
+
+### `POST /api/cron/jobs`
+Creates a new cron job.
+
+**Body**
+```json
+{
+  "id": "nightly_analysis",
+  "schedule": "0 2 * * *",
+  "execution_type": "Pipeline",
+  "payload": {
+    "question": "Run nightly analysis",
+    "pipeline": {
+      "name": "nightly_analysis",
+      "stages": []
+    }
+  },
+  "retry_policy": {
+    "max_retries": 3,
+    "backoff_ms": 300000
+  }
+}
+```
+
+### `POST /api/cron/jobs/:id/trigger`
+Triggers an existing cron job immediately.
+
+### `DELETE /api/cron/jobs/:id`
+Deletes an existing cron job.
+
+---
+
+## 🔔 Events & Triggers API
+
+Use these endpoints to register reactive automations and publish test events.
+
+### `GET /api/triggers`
+Lists all registered triggers.
+
+### `POST /api/triggers`
+Creates a trigger.
+
+**Body**
+```json
+{
+  "id": "file-processor",
+  "event_type": "file.created",
+  "condition": {
+    "Equals": {
+      "path": "extension",
+      "value": ".pdf"
+    }
+  },
+  "action": {
+    "Goal": {
+      "goal": "Inspect the new PDF and summarize it"
+    }
+  }
+}
+```
+
+### `DELETE /api/triggers/:id`
+Deletes a trigger by ID.
+
+### `POST /api/events`
+Publishes a manual event into `stepbit-core`.
+
+**Body**
+```json
+{
+  "event_type": "file.created",
+  "payload": {
+    "extension": ".pdf",
+    "path": "/tmp/report.pdf"
+  }
+}
+```
+
+---
+
 ## 🏗️ Reasoning Graph API
 
 Build and execute ad-hoc reasoning chains using a Directed Acyclic Graph (DAG).
@@ -114,6 +218,26 @@ Verifies that the Rust kernel and DuckDB engine are active.
   "api": "connected",
   "database": "connected",
   "stepbit-core": "connected"
+}
+```
+
+### `GET /api/stepbit-core/status`
+Returns enriched `stepbit-core` runtime information for the dashboard and operational UI.
+
+**Response**
+```json
+{
+  "online": true,
+  "ready": true,
+  "message": "stepbit-core is ready",
+  "active_model": "mistral-7b",
+  "supported_models": ["mistral-7b", "qwen-14b"],
+  "metrics": {
+    "requests_total": 42,
+    "tokens_generated_total": 2048,
+    "active_sessions": 3,
+    "token_latency_avg_ms": 25
+  }
 }
 ```
 

@@ -7,7 +7,10 @@ import (
 	"stepbit-app/internal/config"
 	configModels "stepbit-app/internal/config/models"
 	"stepbit-app/internal/core"
+	"stepbit-app/internal/cron"
 	"stepbit-app/internal/db"
+	"stepbit-app/internal/events"
+	"stepbit-app/internal/execution"
 	"stepbit-app/internal/llm"
 	"stepbit-app/internal/pipeline"
 	"stepbit-app/internal/session"
@@ -26,11 +29,11 @@ import (
 )
 
 type Router struct {
-	App       *fiber.App
-	Core      *core.StepbitCoreClient
-	DB        *db.DbService
-	ConfigUI  *config.ConfigModule
-	Config    *configModels.AppConfig
+	App      *fiber.App
+	Core     *core.StepbitCoreClient
+	DB       *db.DbService
+	ConfigUI *config.ConfigModule
+	Config   *configModels.AppConfig
 }
 
 func NewRouter(coreClient *core.StepbitCoreClient, dbService *db.DbService, appConfig *configModels.AppConfig) *Router {
@@ -51,6 +54,9 @@ func NewRouter(coreClient *core.StepbitCoreClient, dbService *db.DbService, appC
 	sessionModule := session.NewSessionModule(dbService.GetDB(), coreClient, configModule.ConfigService, appConfig)
 	skillModule := skill.NewSkillModule(dbService.GetDB())
 	pipelineModule := pipeline.NewPipelineModule(dbService.GetDB(), coreClient)
+	cronModule := cron.NewCronModule(dbService.GetDB(), coreClient)
+	eventsModule := events.NewEventsModule(dbService.GetDB(), coreClient)
+	executionModule := execution.NewExecutionModule(dbService.GetDB())
 	storageModule := storage.NewStorageModule(dbService.GetDB())
 	llmModule := llm.NewLlmModule(coreClient)
 
@@ -85,7 +91,7 @@ func NewRouter(coreClient *core.StepbitCoreClient, dbService *db.DbService, appC
 		}
 		return c.Next()
 	})
-	
+
 	// WebSocket Upgrade Middleware
 	app.Use("/api/ws", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {
@@ -98,6 +104,9 @@ func NewRouter(coreClient *core.StepbitCoreClient, dbService *db.DbService, appC
 	sessionModule.RegisterRoutes(app)
 	skillModule.RegisterRoutes(app)
 	pipelineModule.RegisterRoutes(app)
+	cronModule.RegisterRoutes(app)
+	eventsModule.RegisterRoutes(app)
+	executionModule.RegisterRoutes(app)
 	storageModule.RegisterRoutes(app)
 	llmModule.RegisterRoutes(app)
 	configModule.RegisterRoutes(app)
@@ -129,11 +138,11 @@ func (r *Router) handleHealth(c *fiber.Ctx) error {
 }
 
 type ChatRequest struct {
-	Model       string           `json:"model"`
-	Messages    []core.Message   `json:"messages"`
-	Stream      bool             `json:"stream"`
-	Temperature float64          `json:"temperature"`
-	MaxTokens   int              `json:"max_tokens"`
+	Model       string         `json:"model"`
+	Messages    []core.Message `json:"messages"`
+	Stream      bool           `json:"stream"`
+	Temperature float64        `json:"temperature"`
+	MaxTokens   int            `json:"max_tokens"`
 }
 
 func (r *Router) handleChatCompletions(c *fiber.Ctx) error {

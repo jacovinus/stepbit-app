@@ -10,7 +10,10 @@ import {
     BookOpen,
     Wrench,
     Zap,
-    Workflow
+    Workflow,
+    AlarmClock,
+    BellRing,
+    History
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -76,6 +79,9 @@ export const Layout = () => {
                             <SidebarItem to="/mcp-tools" icon={Wrench}>MCP Tools</SidebarItem>
                             <SidebarItem to="/reasoning" icon={Zap}>Reasoning</SidebarItem>
                             <SidebarItem to="/pipelines" icon={Workflow}>Pipelines</SidebarItem>
+                            <SidebarItem to="/scheduled-jobs" icon={AlarmClock}>Scheduled Jobs</SidebarItem>
+                            <SidebarItem to="/triggers" icon={BellRing}>Triggers</SidebarItem>
+                            <SidebarItem to="/executions" icon={History}>Executions</SidebarItem>
                         </>
                     )}
                     

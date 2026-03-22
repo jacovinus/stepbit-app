@@ -26,6 +26,7 @@ func InitSchema(db *sql.DB) error {
 	CREATE SEQUENCE IF NOT EXISTS seq_tool_results_id;
 	CREATE SEQUENCE IF NOT EXISTS seq_skills_id;
 	CREATE SEQUENCE IF NOT EXISTS seq_pipelines_id;
+	CREATE SEQUENCE IF NOT EXISTS seq_execution_runs_id;
 
 	CREATE TABLE IF NOT EXISTS sessions (
 		id UUID PRIMARY KEY,
@@ -75,6 +76,22 @@ func InitSchema(db *sql.DB) error {
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS execution_runs (
+		id BIGINT PRIMARY KEY DEFAULT nextval('seq_execution_runs_id'),
+		source_type VARCHAR NOT NULL,
+		source_id VARCHAR NOT NULL,
+		action_type VARCHAR NOT NULL,
+		status VARCHAR NOT NULL,
+		request_payload JSON DEFAULT '{}',
+		response_payload JSON DEFAULT '{}',
+		error TEXT,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		completed_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_execution_runs_created_at ON execution_runs(created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_execution_runs_source ON execution_runs(source_type, source_id, created_at DESC);
 	`
 	_, err := db.Exec(schema)
 	if err != nil {
@@ -110,6 +127,13 @@ func InitSchema(db *sql.DB) error {
 	// Pipelines
 	db.Exec("ALTER TABLE pipelines ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 	db.Exec("ALTER TABLE pipelines ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-	
+
+	// Execution runs
+	db.Exec("ALTER TABLE execution_runs ADD COLUMN IF NOT EXISTS request_payload JSON DEFAULT '{}'")
+	db.Exec("ALTER TABLE execution_runs ADD COLUMN IF NOT EXISTS response_payload JSON DEFAULT '{}'")
+	db.Exec("ALTER TABLE execution_runs ADD COLUMN IF NOT EXISTS error TEXT")
+	db.Exec("ALTER TABLE execution_runs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+	db.Exec("ALTER TABLE execution_runs ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP")
+
 	return nil
 }

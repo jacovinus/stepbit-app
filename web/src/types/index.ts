@@ -97,5 +97,14 @@ export interface PipelineExecuteResult {
 
 export interface StepbitCoreStatus {
   online: boolean;
+  ready: boolean;
   message: string;
+  active_model: string;
+  supported_models: string[];
+  metrics: {
+    requests_total: number;
+    tokens_generated_total: number;
+    active_sessions: number;
+    token_latency_avg_ms: number;
+  };
 }

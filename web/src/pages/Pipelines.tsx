@@ -34,6 +34,7 @@ const Pipelines: React.FC = () => {
 
   // Execution State
   const [executionQuestion, setExecutionQuestion] = useState('');
+  const [executionRlmEnabled, setExecutionRlmEnabled] = useState(false);
   const [executionResult, setExecutionResult] = useState<any>(null);
   const [executing, setExecuting] = useState(false);
 
@@ -81,7 +82,7 @@ const Pipelines: React.FC = () => {
     setExecuting(true);
     setExecutionResult(null);
     try {
-      const res = await pipelinesApi.execute(selectedPipeline.id, executionQuestion);
+      const res = await pipelinesApi.execute(selectedPipeline.id, executionQuestion, executionRlmEnabled);
       setExecutionResult(res);
     } catch (error: any) {
       console.error('Execution failed:', error);
@@ -172,6 +173,7 @@ const Pipelines: React.FC = () => {
                 onExecute={() => {
                   setSelectedPipeline(pipeline);
                   setExecutionQuestion('');
+                  setExecutionRlmEnabled(Boolean((pipeline.definition as any)?.rlm_enabled));
                   setExecutionResult(null);
                   setIsExecutionModalOpen(true);
                 }}
@@ -338,6 +340,22 @@ const Pipelines: React.FC = () => {
                       disabled={executing}
                       className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-gruv-light-1 focus:ring-2 focus:ring-monokai-green outline-none min-h-[120px] resize-none"
                     />
+                    <label className="flex items-center justify-between gap-4 rounded-2xl border border-white/5 bg-white/5 px-5 py-4">
+                      <div>
+                        <p className="text-sm font-bold text-gruv-light-1">Recursive Language Mode</p>
+                        <p className="text-xs text-gruv-light-4">Enable deeper recursive reasoning when the pipeline or request needs it.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExecutionRlmEnabled(!executionRlmEnabled)}
+                        disabled={executing}
+                        className={`relative h-8 w-14 rounded-full transition-colors ${executionRlmEnabled ? 'bg-monokai-green' : 'bg-gruv-dark-4'}`}
+                      >
+                        <span
+                          className={`absolute top-1 h-6 w-6 rounded-full bg-white transition-transform ${executionRlmEnabled ? 'translate-x-7' : 'translate-x-1'}`}
+                        />
+                      </button>
+                    </label>
                     <button 
                       onClick={handleExecute}
                       disabled={executing || !executionQuestion}
@@ -387,6 +405,20 @@ const Pipelines: React.FC = () => {
                               <p className="text-sm font-medium text-gruv-light-3 leading-relaxed group-hover:text-gruv-light-1 transition-colors">{log}</p>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!executionResult.error && executionResult.tool_calls?.length > 0 && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-monokai-green">
+                          <Settings className="w-4 h-4" />
+                          <span className="text-xs font-black uppercase tracking-widest">Tool Calls</span>
+                        </div>
+                        <div className="bg-black/60 rounded-2xl p-6 border border-white/5 overflow-auto max-h-[220px]">
+                          <pre className="text-xs text-monokai-green font-mono whitespace-pre-wrap">
+                            {JSON.stringify(executionResult.tool_calls, null, 2)}
+                          </pre>
                         </div>
                       </div>
                     )}

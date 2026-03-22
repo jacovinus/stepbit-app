@@ -3,9 +3,9 @@ package handlers
 import (
 	"bufio"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
 	"io"
 	"stepbit-app/internal/llm/services"
-	"github.com/gofiber/fiber/v2"
 )
 
 type LlmHandler struct {
@@ -33,7 +33,7 @@ func (h *LlmHandler) ExecuteReasoning(c *fiber.Ctx) error {
 	result, err := h.llmService.ExecuteReasoning(c.Context(), graph)
 	if err != nil {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-			"error": "Reasoning service unavailable. Ensure stepbit-core is running and reachable.",
+			"error":   "Reasoning service unavailable. Ensure stepbit-core is running and reachable.",
 			"details": err.Error(),
 		})
 	}
@@ -49,7 +49,7 @@ func (h *LlmHandler) ExecuteReasoningStream(c *fiber.Ctx) error {
 	body, err := h.llmService.ExecuteReasoningStream(c.Context(), graph)
 	if err != nil {
 		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-			"error": "Reasoning stream unavailable. Ensure stepbit-core is running and reachable.",
+			"error":   "Reasoning stream unavailable. Ensure stepbit-core is running and reachable.",
 			"details": err.Error(),
 		})
 	}
@@ -78,9 +78,5 @@ func (h *LlmHandler) ExecuteReasoningStream(c *fiber.Ctx) error {
 }
 
 func (h *LlmHandler) GetCoreStatus(c *fiber.Ctx) error {
-	online, message := h.llmService.CheckCoreHealth(c.Context())
-	return c.JSON(fiber.Map{
-		"online":  online,
-		"message": message,
-	})
+	return c.JSON(h.llmService.GetCoreStatus(c.Context()))
 }
