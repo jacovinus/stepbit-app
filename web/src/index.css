@@ -38,8 +38,16 @@
 }
 
 @layer base {
+  html {
+    font-size: 14px;
+  }
+
   body {
     @apply bg-bg-primary text-text-primary font-sans antialiased;
+  }
+
+  button, input, textarea, select {
+    font-size: 0.875rem;
   }
 
   code, pre {
@@ -54,13 +62,12 @@
   }
   
   .btn-primary {
-    @apply bg-monokai-pink text-white px-6 py-2 rounded-lg font-semibold 
-           shadow-[0_0_15px_rgba(249,38,114,0.3)] hover:scale-105 
-           hover:shadow-[0_0_25px_rgba(249,38,114,0.5)] transition-all duration-300;
+    @apply bg-monokai-pink text-white px-3 py-2 rounded-xs font-medium text-sm
+           border border-monokai-pink/70 transition-colors duration-200 hover:bg-monokai-pink/90;
   }
 
   .btn-secondary {
-    @apply bg-gruv-dark-3 text-gruv-light-1 px-6 py-2 rounded-lg font-semibold 
-           border border-gruv-dark-4 hover:bg-gruv-dark-4 transition-all duration-300;
+    @apply bg-gruv-dark-3 text-gruv-light-1 px-3 py-2 rounded-xs font-medium text-sm
+           border border-gruv-dark-4 hover:bg-gruv-dark-4 transition-colors duration-200;
   }
 }

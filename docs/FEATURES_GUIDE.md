@@ -179,7 +179,34 @@ The dashboard now surfaces richer runtime visibility from `stepbit-core`, not ju
 
 ---
 
-## 10. Internet Search Tool 🌐
+## 10. Goal Mode (Planner Entry Point) 🎯
+Goal Mode gives you a high-level entry point for planner-driven execution without having to hand-author a pipeline first.
+
+### 🎯 Tutorial: Running your first Goal
+1. Open the **Goals** tab.
+2. Write a natural-language objective such as:
+   - `Investigate the latest execution failures and summarize the recurring patterns`
+   - `Analyze recent pipeline runs and propose the next debugging steps`
+3. Optionally enable **Recursive Language Mode (RLM)** if you want deeper planner execution.
+4. Click **Execute Goal**.
+5. Review the **Final Answer** panel.
+6. Inspect the **Trace** to see planner and synthesis activity.
+7. Open **Generated Pipeline** to view the temporary pipeline that `stepbit-app` built for `stepbit-core`.
+
+### 🧠 How it works
+- `stepbit-app` creates an ephemeral pipeline with:
+  - `planner_stage`
+  - `synthesis_stage`
+- The app sends that pipeline to `stepbit-core` through the standard pipeline execution endpoint.
+- Every run is also recorded in **Execution History** with `source_type = goal`.
+
+### 🎯 When to use Goal Mode vs Pipelines
+- Use **Goal Mode** when you want to start from an outcome and let the planner decompose it.
+- Use **Pipelines** when you already know the exact stages and want deterministic control.
+
+---
+
+## 11. Internet Search Tool 🌐
 Give local models access to the real world. Stepbit uses a custom scraper to fetch grounding data.
 
 ### 🛠 Example Prompt
@@ -187,7 +214,7 @@ Give local models access to the real world. Stepbit uses a custom scraper to fet
 
 ---
 
-## 11. High-Fidelity Data Visualization (Charts) 📊
+## 12. High-Fidelity Data Visualization (Charts) 📊
 Stepbit renders interactive charts directly in chat. If the model detects data trends, it will output a JSON block that Stepbit transforms into a premium visualization.
 
 ### 🎯 Supported Types
@@ -197,7 +224,7 @@ Stepbit renders interactive charts directly in chat. If the model detects data t
 
 ---
 
-## 12. Skills Library 📚
+## 13. Skills Library 📚
 A persistent library of reusable prompts. Use it to store personas like "Expert Coder" or "SQL Analyst".
 
 ### 🎯 Step-by-Step: Importing a Persona
@@ -208,7 +235,7 @@ A persistent library of reusable prompts. Use it to store personas like "Expert 
 
 ---
 
-## 13. Live Data Analyst (Snapshot Mode) 📸
+## 14. Live Data Analyst (Snapshot Mode) 📸
 stepbit-core can analyze your active `chat.db` without causing locks or latency in your chat sessions.
 
 ### 🛠 How it works
@@ -219,7 +246,7 @@ stepbit-core can analyze your active `chat.db` without causing locks or latency 
 
 ---
 
-## 14. Reasoning Playground (Advanced DAG) 🛰️
+## 15. Reasoning Playground (Advanced DAG) 🛰️
 The Reasoning Playground is a high-fidelity editor for building ad-hoc AI agents. Unlike the deterministic pipelines, the playground allows for free-form graph sketching.
 
 ### 🎯 Key Interactive Features
@@ -233,9 +260,32 @@ The Reasoning Playground is a high-fidelity editor for building ad-hoc AI agents
 
 ---
 
-## 15. Pluggable Infrastructure 🔌
+## 16. Execution History (Operational Audit Trail) 🧾
+Execution History gives you a local audit trail of actions initiated from the app.
+
+### 🎯 What gets recorded
+- pipeline executions
+- goal executions
+- cron job creation, deletion, and manual triggers
+- trigger creation and deletion
+- manual event publication
+
+### 🎯 Step-by-Step: Reviewing recent executions
+1. Open the **Executions** tab.
+2. Review each run by:
+   - `source_type`
+   - `source_id`
+   - `action_type`
+   - `status`
+   - timestamps
+3. Expand the payloads mentally through the JSON shown in the table to understand the request and response shape.
+4. Use this page to correlate user actions with `stepbit-core` behavior during debugging or demos.
+
+---
+
+## 17. Pluggable Infrastructure 🔌
 Stepbit is designed to work with or without `stepbit-core`. 
 - **Standalone**: All standard chat and search features work.
-- **Integrated**: Connect `stepbit-core` to unlock the **Pipelines Hub**, **Scheduled Jobs**, **Triggers**, **Reasoning Graphs**, and **Advanced MCP tools**.
+- **Integrated**: Connect `stepbit-core` to unlock **Goal Mode**, the **Pipelines Hub**, **Scheduled Jobs**, **Triggers**, **Execution History**, **Reasoning Graphs**, and **Advanced MCP tools**.
 
 Built with Go, DuckDB, React, and a lot of stubbornness for superior AI orchestration.

@@ -317,9 +317,9 @@ export const Chat = () => {
     //   console.log(isStreaming, "Is Streaming")
 
     return (
-        <div className="flex h-[calc(100vh-140px)] gap-6">
+        <div className="flex h-[calc(100vh-140px)] gap-6 min-w-0 overflow-hidden">
             {/* Session List Sidebar */}
-            <div className="w-64 shrink-0 glass rounded-2xl flex flex-col overflow-hidden">
+            <div className="w-64 shrink-0 glass rounded-2xl flex flex-col overflow-hidden min-w-0">
                 <div className="p-4 border-b border-gruv-dark-4/20 flex flex-col gap-2">
                     <button
                         onClick={() => createSession.mutate(`New Session ${sessions?.length ? sessions.length + 1 : 1}`)}
@@ -480,13 +480,13 @@ export const Chat = () => {
                             </div>
                         </div>
 
-                        <div className="flex-grow overflow-y-auto p-6 flex flex-col gap-6">
+                        <div className="flex-grow overflow-y-auto overflow-x-hidden p-6 flex flex-col gap-6 min-w-0">
                             {messages.map((m, i) => (
                                 <div
                                     key={i}
                                     className={clsx(
-                                        "flex gap-4 max-w-[85%]",
-                                        m.role === 'user' ? "self-end flex-row-reverse" : "self-start"
+                                        "flex gap-4 w-full min-w-0",
+                                        m.role === 'user' ? "self-end flex-row-reverse justify-start" : "self-start justify-start"
                                     )}
                                 >
                                     <div className={clsx(
@@ -496,7 +496,7 @@ export const Chat = () => {
                                         {m.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5 text-monokai-pink" />}
                                     </div>
                                     <div className={clsx(
-                                        "p-4 rounded-2xl text-sm leading-relaxed relative group/message",
+                                        "p-4 rounded-2xl text-sm leading-relaxed relative group/message w-full min-w-0 max-w-[780px]",
                                         m.role === 'user' ? "bg-gruv-dark-3 text-gruv-light-1" : "bg-gruv-dark-2/50 border border-gruv-dark-4/30"
                                     )}>
                                         <button
@@ -524,11 +524,11 @@ export const Chat = () => {
                             ))}
 
                             {(isWaiting || isStreaming) && (
-                                <div className="flex gap-4 max-w-[85%] self-start animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="flex gap-4 w-full min-w-0 self-start animate-in fade-in slide-in-from-bottom-2 duration-300">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-monokai-aqua/10 border border-monokai-aqua/20 shadow-sm border-dashed animate-pulse">
                                         <Loader2 className="w-5 h-5 text-monokai-aqua animate-spin" />
                                     </div>
-                                    <div className="p-4 rounded-2xl text-sm leading-relaxed bg-gruv-dark-2/30 border border-gruv-dark-4/20 flex flex-col gap-3 shadow-inner min-w-[120px]">
+                                    <div className="p-4 rounded-2xl text-sm leading-relaxed bg-gruv-dark-2/30 border border-gruv-dark-4/20 flex flex-col gap-3 shadow-inner min-w-[120px] w-full max-w-[780px]">
                                         <div className="flex items-center justify-between gap-4">
                                             <span className="text-monokai-aqua font-mono text-[10px] uppercase tracking-widest font-bold">
                                                 {status || (isStreaming ? 'Streaming...' : 'Thinking...')}
