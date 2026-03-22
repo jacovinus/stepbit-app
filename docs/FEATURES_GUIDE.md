@@ -25,12 +25,6 @@ llm:
 ## 2. Local Memory Layer (DuckDB) 🦆
 Every conversation is persisted in a high-performance, local DuckDB database (`chat.db`). This provides instant history retrieval and analytical capabilities.
 
-### 🛠 CLI Example
-```bash
-# List all saved sessions from the local database
-cargo run -- session list
-```
-
 ### 🎯 Use Case: Analytical Insights
 Since data is in DuckDB, you can run complex SQL queries over your chat history to find patterns, common topics, or token usage trends.
 
@@ -244,4 +238,4 @@ Stepbit is designed to work with or without `stepbit-core`.
 - **Standalone**: All standard chat and search features work.
 - **Integrated**: Connect `stepbit-core` to unlock the **Pipelines Hub**, **Scheduled Jobs**, **Triggers**, **Reasoning Graphs**, and **Advanced MCP tools**.
 
-Built with 🦀 and 🎨 for superior AI orchestration.
+Built with Go, DuckDB, React, and a lot of stubbornness for superior AI orchestration.

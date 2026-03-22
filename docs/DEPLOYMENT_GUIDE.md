@@ -5,27 +5,27 @@ This guide explains how to deploy Stepbit in production environments, both with 
 ---
 
 ## 🏗 Option 1: Standalone Binary (Non-Docker)
-Rust allows you to compile Stepbit into a high-performance binary that you can run directly on a server.
+Go allows you to compile Stepbit into a single high-performance binary that you can run directly on a server.
 
 ### 1. Build the Release Binary
 On your build machine (or server):
 ```bash
-cargo build --release
+go build -o stepbit-app ./cmd/stepbit-app
 ```
-The resulting binary will be at `target/release/stepbit`.
+The resulting binary will be at `./stepbit-app`.
 
 ### 2. Create a Deployment Bundle 📦
 To run Stepbit on a remote server, you need three things:
-1.  **The Binary**: `target/release/stepbit`
+1.  **The Binary**: `stepbit-app`
 2.  **Configuration**: `config.yaml`
-3.  **Static Assets**: The `static/` directory (for the Playground and Landing Page).
+3.  **Frontend Assets**: the built `web/dist/` bundle if you are serving prebuilt static files separately.
 
 **Structure:**
 ```text
 deploy/
-├── stepbit        (the binary)
-├── config.yaml  (your production config)
-└── static/      (the folder)
+├── stepbit-app   (the binary)
+├── config.yaml   (your production config)
+└── web-dist/     (optional prebuilt frontend bundle)
 ```
 
 ### 3. Running as a System Service (Linux)
@@ -41,7 +41,7 @@ After=network.target
 Type=simple
 User=youruser
 WorkingDirectory=/home/youruser/stepbit
-ExecStart=/home/youruser/stepbit/stepbit serve
+ExecStart=/home/youruser/stepbit/stepbit-app
 Restart=always
 Environment=JACOX_SERVER_HOST=0.0.0.0
 Environment=OPENAI_API_KEY=sk-...
@@ -52,23 +52,7 @@ WantedBy=multi-user.target
 
 ---
 
-## 🐧 Option 2: Static Linking (Ultra-Portable)
-If you want a binary that runs on any Linux distribution without needing shared libraries (like GLIBC), you can use the `musl` target.
-
-### 1. Install Musl Target
-```bash
-rustup target add x86_64-unknown-linux-musl
-```
-
-### 2. Build Static Binary
-```bash
-cargo build --release --target x86_64-unknown-linux-musl
-```
-*Note: You may need to install `musl-tools` on your system.*
-
----
-
-## 🐳 Option 3: Docker Compose (Recommended)
+## 🐳 Option 2: Docker Compose (Recommended)
 The easiest way to deploy with all dependencies (DuckDB, OpenSSL) pre-configured.
 
 ### 🚀 Launch
@@ -80,6 +64,6 @@ Your data is persisted in a Docker volume, and the server is automatically resta
 ---
 
 ## ☁️ Where to host?
-1.  **VPS (DigitalOcean, Hetzner, AWS EC2)**: Best for Standalone Binary or Docker.
+1.  **VPS (DigitalOcean, Hetzner, AWS EC2)**: Best for standalone Go binary or Docker.
 2.  **PaaS (Fly.io, Railway, Render)**: Best for Docker.
 3.  **Local Home Server**: Great for Ollama-based setups.

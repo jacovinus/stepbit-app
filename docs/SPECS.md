@@ -1,6 +1,6 @@
 # Stepbit - LLM Command Center Specification (Final)
 
-A premium, pluggable LLM orchestration platform built in Rust with DuckDB for analytical conversation memory.
+A premium, pluggable LLM orchestration platform built in Go with DuckDB for analytical conversation memory.
 
 ## Architecture Overview
 
@@ -18,7 +18,7 @@ graph TD;
     Router -.-> Anthropic[Anthropic API]
     Router -.-> Ollama[Local Ollama]
     
-    Router <-->|std::sync::Mutex Pool| DB[(DuckDB - chat.db)]
+    Router <-->|database/sql| DB[(DuckDB - chat.db)]
 ```
 
 ## Configuration
@@ -155,16 +155,15 @@ Require `Authorization: Bearer <api_key>` header for all endpoints except `/heal
     - `{ "type": "done" }` -> End of response.
     - `{ "type": "error", "content": "..." }`
 
-## LLM Provider Trait
+## Provider Interface
 
-```rust
-#[async_trait]
-pub trait LlmProvider: Send + Sync {
-    fn name(&self) -> &str;
-    async fn chat(&self, messages: &[Message], options: ChatOptions) -> Result<ChatResponse, LlmError>;
-    async fn chat_streaming(&self, messages: &[Message], options: ChatOptions, tx: Sender<String>) -> Result<Option<Vec<ToolCall>>, LlmError>;
-    async fn execute_pipeline(&self, pipeline: Value, question: String) -> Result<PipelineExecuteResult, LlmError>;
-    fn supported_models(&self) -> Vec<String>;
+```go
+type Provider interface {
+    Name() string
+    Chat(messages []Message, options ChatOptions) (ChatResponse, error)
+    ChatStreaming(messages []Message, options ChatOptions, tx chan<- StreamMessage) error
+    ExecutePipeline(pipeline any, question string, rlmEnabled bool) (PipelineExecuteResult, error)
+    SupportedModels() []string
 }
 ```
 
@@ -192,16 +191,21 @@ The project includes a modern React-based admin dashboard and chat interface wit
 ## Project Structure
 
 ```
-src/
-├── main.rs          # CLI entry & Actix server boot
-├── lib.rs           # Project library modules
-├── config/          # YAML Parsing & AppConfig
-├── db/              # DuckDB service & connection pool
-├── api/             # Actix routes, WebSocket & OpenAI adapter
-│   ├── routes.rs    # Core REST endpoints
-│   ├── websocket.rs # WebSocket stream engine
-│   ├── routes_openai.rs # OpenAI compatibility proxy
-│   └── middleware/  # Auth & Logging interceptors
-├── llm/             # Provider implementations
-└── cli/             # REPL & CLI commands (Clap)
+cmd/
+├── stepbit-app/     # Main application entrypoint
+internal/
+├── api/             # Fiber router and OpenAI-compatible chat endpoint
+├── config/          # Configuration services and handlers
+├── core/            # stepbit-core client and integration logic
+├── cron/            # Scheduled job proxy module
+├── events/          # Trigger and event proxy module
+├── execution/       # Local execution history tracking
+├── llm/             # MCP, reasoning, and core-status handlers
+├── pipeline/        # Pipeline CRUD and execution
+├── session/         # Sessions, messages, import/export, stats
+├── skill/           # Skills CRUD
+├── storage/         # DuckDB connection and SQL tooling
+web/
+├── src/             # React UI
+└── dist/            # Built frontend assets
 ```

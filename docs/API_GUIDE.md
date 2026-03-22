@@ -211,7 +211,7 @@ Returns the current LLM orchestration state.
 ## 📈 System Health
 
 ### `GET /health`
-Verifies that the Rust kernel and DuckDB engine are active.
+Verifies that the Go API layer and DuckDB engine are active.
 ```json
 {
   "status": "healthy",

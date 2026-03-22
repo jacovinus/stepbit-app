@@ -1,13 +1,13 @@
 # ⚖️ Stepbit Governance
 
-How we manage the chaos, one `cargo check` at a time.
+How we manage the chaos, one clean build at a time.
 
-### 1. The Benevolent Dictatorship of the Borrow Checker
+### 1. The Benevolent Dictatorship of the Compiler
 The Compiler is the ultimate authority. If it doesn't compile, it doesn't exist. There are no "warnings," only delayed errors.
 
 ### 2. Feature Request Protocol
 1. **The "Does it look cool?" Test**: If a feature doesn't improve the aesthetic of the Monokai-Gruvbox theme, it is immediately discarded.
-2. **The "Rust Complexity" Guard**: If a feature can't be implemented using at least three different trait bounds and a lifetime specifier, it's probably too simple for this project.
+2. **The "Pragmatic Complexity" Guard**: If a feature becomes more clever than useful, we simplify it until the next person can maintain it.
 
 ### 3. Conflict Resolution
 In the event of a disagreement, the participant with the most customized `zsh` theme wins. If themes are equally complex, we defer to the person who has the most niche mechanical keyboard switches.

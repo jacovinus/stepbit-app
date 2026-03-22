@@ -8,8 +8,8 @@ We believe that sending your private thoughts to a server farm in Oregon is a gr
 ### 2. Form Over Function (But Usually Both)
 If a tool doesn't look like it belongs in a high-budget sci-fi movie, does it even exist? We follow the **Monokai-Gruvbox** lifestyle: if it isn't slightly moody and extremely high-contrast, it isn't worth building.
 
-### 3. The Cult of Rust
-We use Rust because we enjoy the thrill of fighting a borrow checker for three hours just to avoid a memory leak that would have taken five minutes to fix in Python. It’s about the *moral superiority* of zero-cost abstractions.
+### 3. The Cult of Pragmatism
+We use Go for the application layer because a boring, readable, fast-moving backend is exactly what this product needs. The goal is not language theater. The goal is to ship reliable local AI tooling.
 
 ### 4. Minimalist Over-Engineering
 We believe in keeping things simple by using a multi-threaded, asynchronous, analytical database engine (DuckDB) just to store your "Hello World" messages. Why use a list when you can use a relational database with vectorized execution?
