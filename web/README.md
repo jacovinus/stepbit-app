@@ -1,19 +1,19 @@
 # Stepbit Frontend 🚀
 
-A premium, high-performance Building Management & Analytics command center built with **React 19**, **Vite**, and **Tailwind CSS v4**.
+A premium, high-performance LLM command center frontend built with **React 19**, **Vite**, and **Tailwind CSS v4**.
 
 ## ✨ Features
 
 - **Monokai Pro Design**: High-fidelity dark mode with Glassmorphic UI elements and micro-animations.
 - **Real-time Chat**: WebSocket-powered agent interaction with streaming support and thinking states.
-- **Management Hub**: Monitor and orchestrate Skills and Pipelines with instant status feedback.
+- **Operations Hub**: Manage Skills, Pipelines, Scheduled Jobs, Triggers, and Execution History with instant status feedback.
 - **SQL Analytics Explorer**: Interactive DuckDB query interface with real-time results and API latency benchmarking.
 - **Tree-shakable Architecture**: Functional API layer with named exports for optimal memory reliability and bundle size.
 
 ## 🛠 Tech Stack
 
 - **Framework**: React 19 + TypeScript 5
-- **Tooling**: Vite 6, pnpm, Biome/ESLint
+- **Tooling**: Vite 7, pnpm, ESLint
 - **State Management**: Zustand (Global) + TanStack Query v5 (Server State)
 - **Styling**: Tailwind CSS v4 + Tailwind Merge
 - **Testing**: Vitest + Happy-dom + React Testing Library
@@ -32,8 +32,7 @@ pnpm install
 ### 3. Environment Variables
 Create a `.env` file in the `web` directory:
 ```env
-VITE_API_URL=http://localhost:8080/api
-VITE_WS_URL=ws://localhost:8080/ws
+VITE_API_BASE_URL=http://localhost:8080/api
 ```
 
 ### 4. Development
@@ -51,14 +50,14 @@ pnpm build   # Production build
 ## 🏗 Architecture
 
 The project follows a **Feature-based** folder structure:
-- `src/features/`: Domain-specific components, hooks, and logic.
-- `src/api/services/`: Pure functional domain services (Tree-shakable).
-- `src/store/`: Centralized state management using Zustand.
-- `src/components/ui/`: Atomic design system components.
+- `src/pages/`: Route-level product surfaces such as Chat, Pipelines, Scheduled Jobs, and Triggers.
+- `src/api/`: Typed API helpers for backend integration.
+- `src/hooks/`: Shared hooks for streaming, health, and stepbit-core status.
+- `src/components/`: Shared UI components and layout building blocks.
 
 ## 📊 Benchmarking
 
-The **SQL Explorer** in the Analytics page include a live **API Latency Monitor** that measures the round-trip time for every query, providing instant feedback on system responsiveness.
+The frontend is optimized for local-first responsiveness, and pages such as SQL Explorer and Reasoning surfaces benefit from direct round-trip visibility to the backend.
 
 ---
 Built with ❤️ by Antigravity
