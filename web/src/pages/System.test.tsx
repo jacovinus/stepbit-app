@@ -109,6 +109,16 @@ vi.mock('../api/llm', () => ({
         reason: null,
         capabilities: ['sql-query'],
         installed_tools: ['duckdb_query'],
+        planned_tools: [],
+      },
+      {
+        name: 'quantlab',
+        enabled: true,
+        status: 'installed',
+        reason: null,
+        capabilities: ['quant-research', 'multi-tool-surface'],
+        installed_tools: ['quantlab_run'],
+        planned_tools: ['quantlab_sweep', 'quantlab_forward', 'quantlab_portfolio'],
       },
     ]),
   ),
@@ -123,5 +133,7 @@ describe('System Page', () => {
     expect(await screen.findByText('Recent Events')).toBeInTheDocument();
     expect(await screen.findByText('file.created')).toBeInTheDocument();
     expect(await screen.findByText('watcher')).toBeInTheDocument();
+    expect(await screen.findByText('Planned Tools')).toBeInTheDocument();
+    expect(await screen.findByText('quantlab_sweep')).toBeInTheDocument();
   });
 });
