@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { executionsApi, type ExecutionRun } from '../api/executions';
 import { Activity, AlertTriangle, CheckCircle2, Clock3, Filter, RefreshCw, Search, Trash2, XCircle } from 'lucide-react';
 import { Link } from 'react-router';
+import { useAppDialog } from '../components/ui/AppDialogProvider';
+import { toast } from 'sonner';
 
 type RunStatusFilter = 'all' | 'completed' | 'failed' | 'running';
 type TimeWindowFilter = 'all' | '24h' | '7d';
@@ -27,6 +29,7 @@ const ExecutionHistory: React.FC = () => {
   const [query, setQuery] = useState('');
   const [deletingRunId, setDeletingRunId] = useState<number | null>(null);
   const [clearingAll, setClearingAll] = useState(false);
+  const dialog = useAppDialog();
 
   useEffect(() => {
     void loadRuns();
@@ -45,26 +48,50 @@ const ExecutionHistory: React.FC = () => {
   };
 
   const handleDeleteRun = async (runId: number) => {
-    if (!window.confirm(`Delete execution #${runId} from local history?`)) return;
+    const confirmed = await dialog.confirm({
+      title: 'Delete execution',
+      description: `Execution #${runId} will be removed from local history.`,
+      confirmLabel: 'Delete Execution',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setDeletingRunId(runId);
     try {
       await executionsApi.delete(runId);
       setRuns((prev) => prev.filter((run) => run.id !== runId));
+      toast.success(`Execution #${runId} deleted.`);
     } catch (error) {
       console.error('Failed to delete execution run:', error);
+      await dialog.alert({
+        title: 'Delete failed',
+        description: `Execution #${runId} could not be deleted.`,
+        tone: 'danger',
+      });
     } finally {
       setDeletingRunId(null);
     }
   };
 
   const handleDeleteAllRuns = async () => {
-    if (!window.confirm('Delete all local execution history?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Clear execution history',
+      description: 'This removes every locally stored execution entry from the app.',
+      confirmLabel: 'Clear History',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setClearingAll(true);
     try {
       await executionsApi.deleteAll();
       setRuns([]);
+      toast.success('Execution history cleared.');
     } catch (error) {
       console.error('Failed to clear execution history:', error);
+      await dialog.alert({
+        title: 'Clear failed',
+        description: 'The local execution history could not be cleared.',
+        tone: 'danger',
+      });
     } finally {
       setClearingAll(false);
     }

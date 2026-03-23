@@ -22,6 +22,26 @@ func (s *LlmService) GetMCPProviders(ctx context.Context) (interface{}, error) {
 	return s.coreClient.GetMCPProviders(ctx)
 }
 
+func (s *LlmService) GetCoreHealthReport(ctx context.Context) (core.CoreHealthReport, error) {
+	return s.coreClient.GetHealthReport(ctx)
+}
+
+func (s *LlmService) GetCoreReadinessReport(ctx context.Context) (core.CoreReadinessReport, error) {
+	return s.coreClient.GetReadinessReport(ctx)
+}
+
+func (s *LlmService) GetCoreSystemRuntime(ctx context.Context) (core.CoreSystemRuntime, error) {
+	return s.coreClient.GetSystemRuntime(ctx)
+}
+
+func (s *LlmService) GetCoreCronStatus(ctx context.Context) (core.CoreCronStatus, error) {
+	return s.coreClient.GetCronStatus(ctx)
+}
+
+func (s *LlmService) GetCoreRecentEvents(ctx context.Context, limit int) ([]core.CoreRecentEvent, error) {
+	return s.coreClient.ListRecentEvents(ctx, limit)
+}
+
 func (s *LlmService) ExecuteMCPTool(ctx context.Context, tool string, input interface{}) (map[string]interface{}, error) {
 	return s.coreClient.ExecuteMCPTool(ctx, tool, input)
 }

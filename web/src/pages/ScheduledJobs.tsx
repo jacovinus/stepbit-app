@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlarmClock, History, Play, Plus, RefreshCw, Search, TimerReset, Trash2, Workflow } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { cronApi, type CreateCronJobRequest, type CronJob } from '../api/cron';
 import { executionsApi, type ExecutionRun } from '../api/executions';
+import { getCoreCronStatus } from '../api/llm';
 import { useStepbitCore } from '../hooks/useStepbitCore';
+import { useAppDialog } from '../components/ui/AppDialogProvider';
+import type { CoreCronStatus } from '../types';
+import { toast } from 'sonner';
 
 type ExecutionType = 'Pipeline' | 'ReasoningGraph';
 
@@ -32,6 +37,13 @@ const ScheduledJobs: React.FC = () => {
   const [jobActivity, setJobActivity] = useState<ExecutionRun[]>([]);
   const [activityQuery, setActivityQuery] = useState('');
   const { online, loading: statusLoading, refresh: refreshStatus } = useStepbitCore();
+  const dialog = useAppDialog();
+  const { data: cronStatus, isLoading: cronStatusLoading, refetch: refetchCronStatus } = useQuery({
+    queryKey: ['scheduled-jobs-core-cron-status'],
+    queryFn: () => getCoreCronStatus(),
+    refetchInterval: 10000,
+    retry: false,
+  });
 
   useEffect(() => {
     void Promise.all([loadJobs(), loadJobActivity()]);
@@ -146,6 +158,7 @@ const ScheduledJobs: React.FC = () => {
       await cronApi.create(request);
       resetForm();
       await Promise.all([loadJobs(), loadJobActivity()]);
+      toast.success('Scheduled job created.');
     } catch (error: any) {
       const message = error.response?.data?.error || error.message || 'Failed to create scheduled job';
       setFormError(message);
@@ -155,14 +168,25 @@ const ScheduledJobs: React.FC = () => {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(`Delete scheduled job "${id}"?`)) return;
+    const confirmed = await dialog.confirm({
+      title: 'Delete scheduled job',
+      description: `Scheduled job "${id}" will be removed from the scheduler.`,
+      confirmLabel: 'Delete Job',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
 
     try {
       await cronApi.delete(id);
       await Promise.all([loadJobs(), loadJobActivity()]);
+      toast.success(`Scheduled job "${id}" deleted.`);
     } catch (error) {
       console.error('Failed to delete job:', error);
-      alert('Failed to delete scheduled job.');
+      await dialog.alert({
+        title: 'Delete failed',
+        description: 'The scheduled job could not be deleted.',
+        tone: 'danger',
+      });
     }
   }
 
@@ -170,9 +194,14 @@ const ScheduledJobs: React.FC = () => {
     try {
       await cronApi.trigger(id);
       await Promise.all([loadJobs(), loadJobActivity()]);
+      toast.success(`Scheduled job "${id}" triggered.`);
     } catch (error) {
       console.error('Failed to trigger job:', error);
-      alert('Failed to trigger scheduled job.');
+      await dialog.alert({
+        title: 'Trigger failed',
+        description: 'The scheduled job could not be triggered.',
+        tone: 'danger',
+      });
     }
   }
 
@@ -195,6 +224,12 @@ const ScheduledJobs: React.FC = () => {
         online={online}
         statusLoading={statusLoading}
         onRefresh={refreshStatus}
+      />
+
+      <CoreSchedulerPanel
+        cronStatus={cronStatus}
+        loading={cronStatusLoading}
+        onRefresh={() => void refetchCronStatus()}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-4 mb-4">
@@ -281,6 +316,66 @@ function ScheduledJobsHeader({
         </button>
       </div>
     </div>
+  );
+}
+
+function CoreSchedulerPanel({
+  cronStatus,
+  loading,
+  onRefresh,
+}: {
+  cronStatus?: CoreCronStatus;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <section className="glass border-white/10 rounded-xs p-4 mb-4">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gruv-light-1">Core Scheduler Runtime</h2>
+          <p className="text-xs text-gruv-light-4">Live scheduler state from stepbit-core. Use this to confirm the cron worker is actually running, beyond the local activity feed.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to="/system"
+            className="px-3 py-2 rounded-xs bg-white/5 hover:bg-white/10 transition-colors text-xs font-semibold text-gruv-light-2"
+          >
+            Open System View
+          </Link>
+          <button
+            onClick={onRefresh}
+            className="p-2 rounded-xs bg-white/5 hover:bg-white/10 transition-colors"
+            disabled={loading}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-gruv-light-3 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {loading && !cronStatus ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((idx) => (
+            <div key={idx} className="h-20 rounded-xs bg-white/5 animate-pulse" />
+          ))}
+        </div>
+      ) : !cronStatus ? (
+        <EmptyState
+          icon={Workflow}
+          title="No scheduler telemetry available"
+          description="stepbit-core did not return live cron status for this view."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <InfoStat
+            label="Scheduler"
+            value={cronStatus.scheduler_running ? 'Running' : 'Stopped'}
+          />
+          <InfoStat label="Registered Jobs" value={String(cronStatus.total_jobs)} />
+          <InfoStat label="Failing Jobs" value={String(cronStatus.failing_jobs)} />
+          <InfoStat label="Retry Queue" value={String(cronStatus.retrying_jobs)} />
+        </div>
+      )}
+    </section>
   );
 }
 

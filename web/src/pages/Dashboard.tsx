@@ -1,22 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import {
-  Activity,
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Cpu,
-  Gauge,
-  HardDrive,
-  History,
-  Layers,
-  Loader2,
-  MessageCircle,
-  PlugZap,
-  Zap,
-} from 'lucide-react';
+import { Activity, AlertCircle, AlertTriangle, CheckCircle2, Clock, Cpu, Gauge, HardDrive, History, Layers, Loader2, MessageCircle, PlugZap, Zap } from 'lucide-react';
 import { Tooltip } from '../components/Tooltip';
 import { getMcpProviders } from '../api/llm';
 import { sessionsApi } from '../api/sessions';
@@ -74,6 +59,7 @@ export const Dashboard = () => {
 
   const safeSessions = Array.isArray(sessions) ? sessions : [];
   const safeRuns = Array.isArray(runs) ? runs : [];
+  const safeProviders = Array.isArray(mcpProviders) ? mcpProviders : [];
 
   const runtimeSummary = useMemo(() => buildRuntimeSummary(core, safeRuns), [core, safeRuns]);
   const memoryEntries = useMemo(
@@ -134,7 +120,9 @@ export const Dashboard = () => {
         <CoreActivityFeedCard runs={runtimeSummary.coreRuns} failures={runtimeSummary.recentFailures} loading={runsLoading} />
       </div>
 
-      <McpProvidersCard providers={Array.isArray(mcpProviders) ? mcpProviders : []} loading={providersLoading} />
+      <ControlPlaneSummaryCard core={core} providers={safeProviders} loading={providersLoading} />
+
+      <McpProvidersCard providers={safeProviders} loading={providersLoading} />
     </div>
   );
 };
@@ -521,6 +509,63 @@ function McpProvidersCard({
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ControlPlaneSummaryCard({
+  core,
+  providers,
+  loading,
+}: {
+  core: ReturnType<typeof useStepbitCore>;
+  providers: McpProviderStatus[];
+  loading: boolean;
+}) {
+  const installedProviders = providers.filter((provider) => provider.status === 'installed').length;
+  const failedProviders = providers.filter((provider) => provider.status === 'failed').length;
+
+  return (
+    <div className="glass p-4 rounded-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <CheckCircle2 className="text-monokai-aqua w-4 h-4" />
+            Control Plane
+          </h3>
+          <p className="text-xs text-gruv-light-4 mt-1">
+            Keep the dashboard summary-focused. Use the System view for detailed health checks, readiness blockers, runtime paths, and deeper troubleshooting.
+          </p>
+        </div>
+        <Link
+          to="/system"
+          className="px-3 py-2 rounded-xs bg-monokai-aqua/10 border border-monokai-aqua/20 text-monokai-aqua hover:bg-monokai-aqua/15 transition-colors text-xs font-semibold"
+        >
+          Open System View
+        </Link>
+      </div>
+
+      {loading ? (
+        <LoadingPane colorClassName="text-monokai-aqua" />
+      ) : (
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <RuntimeRow
+            label="Core Status"
+            value={core.online ? (core.ready ? 'Healthy & Ready' : 'Online, warming') : 'Offline'}
+            accent={core.online ? (core.ready ? 'text-monokai-green' : 'text-monokai-orange') : 'text-monokai-pink'}
+          />
+          <RuntimeRow
+            label="MCP Providers"
+            value={`${installedProviders}/${providers.length || 0} installed`}
+            accent={failedProviders === 0 ? 'text-monokai-green' : 'text-monokai-orange'}
+          />
+          <RuntimeRow
+            label="Attention Needed"
+            value={failedProviders > 0 ? `${failedProviders} provider issue(s)` : 'No immediate provider alerts'}
+            accent={failedProviders > 0 ? 'text-monokai-orange' : 'text-monokai-green'}
+          />
         </div>
       )}
     </div>

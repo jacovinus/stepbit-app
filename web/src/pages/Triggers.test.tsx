@@ -46,6 +46,44 @@ vi.mock('../api/executions', () => ({
   },
 }));
 
+vi.mock('../api/llm', () => ({
+  getCoreRecentEvents: vi.fn(() =>
+    Promise.resolve([
+      {
+        id: 'evt-1',
+        event_type: 'file.created',
+        payload: { extension: '.pdf', path: '/tmp/report.pdf' },
+        timestamp: '2026-03-23T10:00:00.000Z',
+        source_node: 'watcher',
+      },
+    ]),
+  ),
+  getCoreSystemRuntime: vi.fn(() =>
+    Promise.resolve({
+      state_dir: '/tmp/stepbit-core',
+      cron_db_path: '/tmp/stepbit-core/cron.db',
+      events_db_path: '/tmp/stepbit-core/events.db',
+      models_on_disk: 1,
+      loaded_models: 1,
+      mcp_providers: 2,
+      installed_mcp_providers: 2,
+      trigger_count: 3,
+      scheduler_active: true,
+      temp: {
+        registered_resources: 0,
+        total_size_bytes: 0,
+        pressure_level: 'normal',
+        global_usage_bytes: 0,
+        global_usage_files: 0,
+        global_max_bytes: 0,
+        global_max_files: 0,
+        per_owner_max_bytes: 0,
+        per_owner_max_files: 0,
+      },
+    }),
+  ),
+}));
+
 vi.mock('../hooks/useStepbitCore', () => ({
   useStepbitCore: () => ({
     online: true,
@@ -77,6 +115,9 @@ describe('Triggers Page', () => {
     renderWithProviders(<Triggers />);
 
     expect(await screen.findByText('file-processor')).toBeInTheDocument();
+    expect(screen.getByText('Core Event Bus')).toBeInTheDocument();
+    expect(screen.getByText('Latest Persisted Events')).toBeInTheDocument();
+    expect(screen.getByText('watcher')).toBeInTheDocument();
     expect(screen.getByText('Recent Trigger Activity')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Execution History' })).toBeInTheDocument();
   });

@@ -4,6 +4,9 @@ import { Wrench, Box, Code, Play, RefreshCw, Sparkles, Trash2 } from 'lucide-rea
 import { motion } from 'framer-motion';
 import { ChartComponent } from '../components/ChartComponent';
 import { MarkdownContent } from '../components/MarkdownContent';
+import { useAppDialog } from '../components/ui/AppDialogProvider';
+import { toast } from 'sonner';
+import { Link } from 'react-router';
 
 const McpTools: React.FC = () => {
   const [tools, setTools] = useState<McpTool[]>([]);
@@ -24,6 +27,7 @@ const McpTools: React.FC = () => {
     deleting: false,
     error: '',
   });
+  const dialog = useAppDialog();
 
   useEffect(() => {
     getMcpTools()
@@ -122,7 +126,13 @@ const McpTools: React.FC = () => {
 
   const handleDeleteArtifacts = async () => {
     if (!quantLabResult || quantLabResult.artifacts.length === 0) return;
-    if (!window.confirm('Delete all artifacts for this QuantLab run?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Delete QuantLab artifacts',
+      description: 'This removes the generated charts, reports, and trade files for the current run.',
+      confirmLabel: 'Delete Artifacts',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
 
     const targetPath = quantLabResult.artifacts[0]?.path || '';
     if (!targetPath) return;
@@ -139,12 +149,18 @@ const McpTools: React.FC = () => {
         deleting: false,
         error: '',
       });
+      toast.success('QuantLab artifacts deleted.');
     } catch (deleteError: any) {
       setArtifactState((prev) => ({
         ...prev,
         deleting: false,
         error: deleteError?.message || 'Failed to delete artifacts',
       }));
+      await dialog.alert({
+        title: 'Artifact cleanup failed',
+        description: deleteError?.message || 'The QuantLab artifacts could not be deleted.',
+        tone: 'danger',
+      });
     }
   };
 
@@ -207,49 +223,55 @@ const McpTools: React.FC = () => {
 
   return (
     <div className="p-4 max-w-7xl mx-auto min-h-screen space-y-6">
-      <div className="flex items-center gap-4">
-        <Wrench className="w-8 h-8 text-monokai-pink" />
-        <div>
-          <h1 className="text-3xl font-bold text-gruv-light-0">MCP Tool Registry</h1>
-          <p className="text-sm text-gruv-light-4">Inspect schemas, start from guided inputs, then run a playground call through a temporary pipeline.</p>
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Wrench className="w-8 h-8 text-monokai-pink" />
+          <div>
+            <h1 className="text-3xl font-bold text-gruv-light-0">MCP Tool Playground</h1>
+            <p className="text-sm text-gruv-light-4">Inspect schemas, craft inputs, and execute tools through a temporary pipeline. Provider state and runtime diagnostics live in System.</p>
+          </div>
         </div>
+        <Link
+          to="/system"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-xs bg-monokai-aqua/10 border border-monokai-aqua/20 text-monokai-aqua hover:bg-monokai-aqua/15 transition-colors text-xs font-semibold"
+        >
+          Open System View
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-4">
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {tools.map((tool) => (
-              <motion.button
-                type="button"
-                key={tool.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                onClick={() => setSelectedTool(tool.name)}
-                className={`glass p-5 rounded-xs text-left border transition-colors ${selectedTool === tool.name ? 'border-monokai-pink bg-monokai-pink/5' : 'border-white/10 hover:border-monokai-pink/30'}`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-gruv-dark-3">
-                    <Box className="w-5 h-5 text-monokai-aqua" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gruv-light-1">{tool.name}</h3>
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {tools.map((tool) => (
+            <motion.button
+              type="button"
+              key={tool.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => setSelectedTool(tool.name)}
+              className={`glass p-5 rounded-xs text-left border transition-colors ${selectedTool === tool.name ? 'border-monokai-pink bg-monokai-pink/5' : 'border-white/10 hover:border-monokai-pink/30'}`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg bg-gruv-dark-3">
+                  <Box className="w-5 h-5 text-monokai-aqua" />
                 </div>
-                <p className="text-gruv-light-4 text-sm italic">{tool.description}</p>
-              </motion.button>
-            ))}
-          </div>
-
-          {tools.length === 0 && (
-            <div className="text-center py-20 bg-gruv-dark-2 rounded-2xl border border-dashed border-gruv-dark-4">
-              <p className="text-gruv-light-4">No MCP tools registered in stepbit-core.</p>
-            </div>
-          )}
+                <h3 className="text-lg font-bold text-gruv-light-1">{tool.name}</h3>
+              </div>
+              <p className="text-gruv-light-4 text-sm italic">{tool.description}</p>
+            </motion.button>
+          ))}
         </div>
+
+        {tools.length === 0 && (
+          <div className="text-center py-20 bg-gruv-dark-2 rounded-2xl border border-dashed border-gruv-dark-4">
+            <p className="text-gruv-light-4">No MCP tools registered in stepbit-core.</p>
+          </div>
+        )}
 
         <div className="glass p-5 rounded-xs border-white/10 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-gruv-light-1">{activeTool?.name || 'Tool Playground'}</h2>
-              <p className="text-xs text-gruv-light-4">Start with guided fields when the schema is simple; switch to raw JSON when needed.</p>
+              <p className="text-xs text-gruv-light-4">Execution-only surface. Start with guided fields when the schema is simple; switch to raw JSON when needed.</p>
             </div>
             <button
               onClick={handleRun}

@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { pipelinesApi, type Pipeline } from '../api/pipelines';
 import { useStepbitCore } from '../hooks/useStepbitCore';
+import { useAppDialog } from '../components/ui/AppDialogProvider';
+import { toast } from 'sonner';
 
 type ExecutionTabId = 'answer' | 'stages' | 'trace' | 'data' | 'tools' | 'raw';
 
@@ -50,6 +52,7 @@ const Pipelines: React.FC = () => {
   const [executionTab, setExecutionTab] = useState<ExecutionTabId>('answer');
   const [executing, setExecuting] = useState(false);
   const [traceFilter, setTraceFilter] = useState('');
+  const dialog = useAppDialog();
 
   useEffect(() => {
     loadPipelines();
@@ -74,19 +77,36 @@ const Pipelines: React.FC = () => {
       setIsCreateModalOpen(false);
       setNewName('');
       loadPipelines();
+      toast.success('Pipeline created.');
     } catch (error) {
-      alert('Invalid JSON definition or server error');
+      await dialog.alert({
+        title: 'Pipeline creation failed',
+        description: 'The JSON definition is invalid or the server rejected the request.',
+        tone: 'danger',
+      });
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('Are you sure you want to delete this pipeline?')) {
-      try {
-        await pipelinesApi.delete(id);
-        loadPipelines();
-      } catch (error) {
-        console.error('Failed to delete:', error);
-      }
+    const confirmed = await dialog.confirm({
+      title: 'Delete pipeline',
+      description: 'This will remove the pipeline from the registry. Continue?',
+      confirmLabel: 'Delete Pipeline',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      await pipelinesApi.delete(id);
+      loadPipelines();
+      toast.success('Pipeline deleted.');
+    } catch (error) {
+      console.error('Failed to delete:', error);
+      await dialog.alert({
+        title: 'Delete failed',
+        description: 'The pipeline could not be deleted.',
+        tone: 'danger',
+      });
     }
   };
 

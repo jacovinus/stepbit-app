@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, BellRing, CheckCircle2, Plus, RefreshCw, Search, Send, Trash2, XCircle } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { eventsApi, type EventTrigger } from '../api/events';
 import { executionsApi, type ExecutionRun } from '../api/executions';
+import { getCoreRecentEvents, getCoreSystemRuntime } from '../api/llm';
 import { useStepbitCore } from '../hooks/useStepbitCore';
+import { useAppDialog } from '../components/ui/AppDialogProvider';
+import type { CoreRecentEvent, CoreSystemRuntime } from '../types';
+import { toast } from 'sonner';
 
 type ActionMode = 'Goal' | 'Pipeline';
 type ActivityFilter = 'all' | 'event' | 'trigger';
@@ -40,6 +45,19 @@ const Triggers: React.FC = () => {
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [activityQuery, setActivityQuery] = useState('');
   const { online, loading: statusLoading, refresh: refreshStatus } = useStepbitCore();
+  const dialog = useAppDialog();
+  const { data: recentEvents, isLoading: recentEventsLoading, refetch: refetchRecentEvents } = useQuery({
+    queryKey: ['triggers-recent-core-events'],
+    queryFn: () => getCoreRecentEvents(8),
+    refetchInterval: 10000,
+    retry: false,
+  });
+  const { data: systemRuntime, isLoading: runtimeLoading, refetch: refetchRuntime } = useQuery({
+    queryKey: ['triggers-system-runtime'],
+    queryFn: () => getCoreSystemRuntime(),
+    refetchInterval: 10000,
+    retry: false,
+  });
 
   useEffect(() => {
     void loadTriggers();
@@ -161,6 +179,7 @@ const Triggers: React.FC = () => {
       });
       resetTriggerErrors();
       await Promise.all([loadTriggers(), loadActivity()]);
+      toast.success(`Trigger "${triggerId.trim()}" created.`);
     } catch (error: any) {
       const message = error.response?.data?.error || error.message || 'Failed to create trigger';
       setTriggerError(message);
@@ -170,14 +189,25 @@ const Triggers: React.FC = () => {
   }
 
   async function handleDeleteTrigger(id: string) {
-    if (!confirm(`Delete trigger "${id}"?`)) return;
+    const confirmed = await dialog.confirm({
+      title: 'Delete trigger',
+      description: `Trigger "${id}" will stop reacting to matching events.`,
+      confirmLabel: 'Delete Trigger',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
 
     try {
       await eventsApi.deleteTrigger(id);
       await Promise.all([loadTriggers(), loadActivity()]);
+      toast.success(`Trigger "${id}" deleted.`);
     } catch (error) {
       console.error('Failed to delete trigger:', error);
-      alert('Failed to delete trigger.');
+      await dialog.alert({
+        title: 'Delete failed',
+        description: 'The trigger could not be deleted.',
+        tone: 'danger',
+      });
     }
   }
 
@@ -197,6 +227,7 @@ const Triggers: React.FC = () => {
         payload: parsedPayload.value,
       });
       await loadActivity();
+      toast.success(`Event "${publishEventType.trim()}" published.`);
     } catch (error: any) {
       const message = error.response?.data?.error || error.message || 'Failed to publish event';
       setEventError(message);
@@ -215,6 +246,16 @@ const Triggers: React.FC = () => {
         online={online}
         statusLoading={statusLoading}
         onRefresh={refreshStatus}
+      />
+
+      <TriggerBusPanel
+        recentEvents={recentEvents}
+        runtime={systemRuntime}
+        loading={recentEventsLoading || runtimeLoading}
+        onRefresh={() => {
+          void refetchRecentEvents();
+          void refetchRuntime();
+        }}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
@@ -315,6 +356,96 @@ function TriggersHeader({
           <RefreshCw className={`w-3 h-3 text-gruv-light-4 ${statusLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
+    </div>
+  );
+}
+
+function TriggerBusPanel({
+  recentEvents,
+  runtime,
+  loading,
+  onRefresh,
+}: {
+  recentEvents?: CoreRecentEvent[];
+  runtime?: CoreSystemRuntime;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <section className="glass border-white/10 rounded-xs p-4 mb-4">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gruv-light-1">Core Event Bus</h2>
+          <p className="text-xs text-gruv-light-4">Live trigger and event telemetry from stepbit-core. This sits alongside the local execution history so you can see what the core actually persisted.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to="/system"
+            className="px-3 py-2 rounded-xs bg-white/5 hover:bg-white/10 transition-colors text-xs font-semibold text-gruv-light-2"
+          >
+            Open System View
+          </Link>
+          <button
+            onClick={onRefresh}
+            className="p-2 rounded-xs bg-white/5 hover:bg-white/10 transition-colors"
+            disabled={loading}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-gruv-light-3 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[0.85fr_1.15fr] gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <InfoStat label="Trigger Definitions" value={runtime ? String(runtime.trigger_count) : 'n/a'} />
+          <InfoStat label="Scheduler" value={runtime ? (runtime.scheduler_active ? 'Running' : 'Stopped') : 'n/a'} />
+          <InfoStat label="Recent Core Events" value={recentEvents ? String(recentEvents.length) : 'n/a'} />
+        </div>
+
+        <div className="rounded-xs border border-white/10 bg-white/5 p-3.5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gruv-light-1">Latest Persisted Events</h3>
+              <p className="text-[11px] text-gruv-light-4">Read-only feed from the core event store.</p>
+            </div>
+          </div>
+
+          {loading && !recentEvents ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((idx) => (
+                <div key={idx} className="h-16 rounded-xs bg-white/5 animate-pulse" />
+              ))}
+            </div>
+          ) : !recentEvents?.length ? (
+            <EmptyState
+              icon={Activity}
+              title="No core events yet"
+              description="Publish a test event to populate the persisted event bus feed."
+            />
+          ) : (
+            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+              {recentEvents.map((event) => (
+                <CoreEventRow key={event.id} event={event} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CoreEventRow({ event }: { event: CoreRecentEvent }) {
+  return (
+    <div className="rounded-xs border border-white/10 bg-gruv-dark-0/40 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-gruv-light-1">{event.event_type}</p>
+          <p className="text-[11px] text-gruv-light-4">{event.source_node || 'unknown source'}</p>
+        </div>
+        <span className="text-[11px] text-gruv-light-4">{formatDateTime(event.timestamp)}</span>
+      </div>
+      <p className="text-[11px] text-gruv-light-3 mt-2">{summarizeValue(event.payload)}</p>
     </div>
   );
 }
@@ -999,6 +1130,12 @@ function summarizeValue(value: unknown) {
     return keys.slice(0, 4).join(', ') + (keys.length > 4 ? ` +${keys.length - 4} more` : '');
   }
   return String(value);
+}
+
+function formatDateTime(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString();
 }
 
 function safeParseJson(input: string): ParseResult {

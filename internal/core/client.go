@@ -496,6 +496,52 @@ func (c *StepbitCoreClient) CheckReadiness(ctx context.Context) (bool, string) {
 	return false, fmt.Sprintf("readiness returned status %d", resp.StatusCode)
 }
 
+func (c *StepbitCoreClient) GetHealthReport(ctx context.Context) (CoreHealthReport, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/health", nil)
+	if err != nil {
+		return CoreHealthReport{}, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return CoreHealthReport{}, err
+	}
+	defer resp.Body.Close()
+
+	var report CoreHealthReport
+	if err := stdjson.NewDecoder(resp.Body).Decode(&report); err != nil {
+		return CoreHealthReport{}, err
+	}
+
+	return report, nil
+}
+
+func (c *StepbitCoreClient) GetReadinessReport(ctx context.Context) (CoreReadinessReport, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/ready", nil)
+	if err != nil {
+		return CoreReadinessReport{}, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return CoreReadinessReport{}, err
+	}
+	defer resp.Body.Close()
+
+	var report CoreReadinessReport
+	if err := stdjson.NewDecoder(resp.Body).Decode(&report); err != nil {
+		return CoreReadinessReport{}, err
+	}
+
+	return report, nil
+}
+
 // DiscoverModels fetches available models from stepbit-core
 func (c *StepbitCoreClient) DiscoverModels(ctx context.Context) ([]string, error) {
 	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, "/v1/models", nil)
@@ -728,6 +774,77 @@ type CoreStatus struct {
 	Capabilities    CoreCapabilities   `json:"capabilities"`
 }
 
+type CoreCheck struct {
+	Name   string `json:"name"`
+	OK     bool   `json:"ok"`
+	Detail string `json:"detail,omitempty"`
+}
+
+type CoreHealthReport struct {
+	Status string      `json:"status"`
+	OK     bool        `json:"ok"`
+	Checks []CoreCheck `json:"checks"`
+}
+
+type CoreReadinessContext struct {
+	StateDir             string `json:"state_dir"`
+	CronDBPath           string `json:"cron_db_path"`
+	EventsDBPath         string `json:"events_db_path"`
+	ModelsOnDisk         int    `json:"models_on_disk"`
+	LoadedModels         int    `json:"loaded_models"`
+	MCPEnabled           int    `json:"mcp_enabled"`
+	MCPInstalled         int    `json:"mcp_installed"`
+	CronSchedulerRunning bool   `json:"cron_scheduler_running"`
+}
+
+type CoreReadinessReport struct {
+	Status  string               `json:"status"`
+	Ready   bool                 `json:"ready"`
+	Reasons []string             `json:"reasons"`
+	Checks  []CoreCheck          `json:"checks"`
+	Context CoreReadinessContext `json:"context"`
+}
+
+type CoreTempRuntime struct {
+	RegisteredResources int    `json:"registered_resources"`
+	TotalSizeBytes      uint64 `json:"total_size_bytes"`
+	PressureLevel       string `json:"pressure_level"`
+	GlobalUsageBytes    uint64 `json:"global_usage_bytes"`
+	GlobalUsageFiles    int    `json:"global_usage_files"`
+	GlobalMaxBytes      uint64 `json:"global_max_bytes"`
+	GlobalMaxFiles      int    `json:"global_max_files"`
+	PerOwnerMaxBytes    uint64 `json:"per_owner_max_bytes"`
+	PerOwnerMaxFiles    int    `json:"per_owner_max_files"`
+}
+
+type CoreSystemRuntime struct {
+	StateDir              string          `json:"state_dir"`
+	CronDBPath            string          `json:"cron_db_path"`
+	EventsDBPath          string          `json:"events_db_path"`
+	ModelsOnDisk          int             `json:"models_on_disk"`
+	LoadedModels          int             `json:"loaded_models"`
+	MCPProviders          int             `json:"mcp_providers"`
+	InstalledMCPProviders int             `json:"installed_mcp_providers"`
+	TriggerCount          int             `json:"trigger_count"`
+	SchedulerActive       bool            `json:"scheduler_active"`
+	Temp                  CoreTempRuntime `json:"temp"`
+}
+
+type CoreCronStatus struct {
+	SchedulerRunning bool `json:"scheduler_running"`
+	TotalJobs        int  `json:"total_jobs"`
+	FailingJobs      int  `json:"failing_jobs"`
+	RetryingJobs     int  `json:"retrying_jobs"`
+}
+
+type CoreRecentEvent struct {
+	ID         string      `json:"id"`
+	EventType  string      `json:"event_type"`
+	Payload    interface{} `json:"payload"`
+	Timestamp  string      `json:"timestamp"`
+	SourceNode *string     `json:"source_node"`
+}
+
 type EventTrigger struct {
 	ID        string      `json:"id"`
 	EventType string      `json:"event_type"`
@@ -867,4 +984,71 @@ func (c *StepbitCoreClient) PublishEvent(ctx context.Context, payload interface{
 	}
 
 	return nil
+}
+
+func (c *StepbitCoreClient) GetSystemRuntime(ctx context.Context) (CoreSystemRuntime, error) {
+	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, "/v1/system/runtime", nil)
+	if err != nil {
+		return CoreSystemRuntime{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return CoreSystemRuntime{}, fmt.Errorf("system runtime failed (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result CoreSystemRuntime
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return CoreSystemRuntime{}, err
+	}
+
+	return result, nil
+}
+
+func (c *StepbitCoreClient) GetCronStatus(ctx context.Context) (CoreCronStatus, error) {
+	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, "/v1/cron/status", nil)
+	if err != nil {
+		return CoreCronStatus{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return CoreCronStatus{}, fmt.Errorf("cron status failed (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result CoreCronStatus
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return CoreCronStatus{}, err
+	}
+
+	return result, nil
+}
+
+func (c *StepbitCoreClient) ListRecentEvents(ctx context.Context, limit int) ([]CoreRecentEvent, error) {
+	path := "/v1/events/recent"
+	if limit > 0 {
+		path = fmt.Sprintf("%s?limit=%d", path, limit)
+	}
+
+	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("recent events failed (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Events []CoreRecentEvent `json:"events"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result.Events, nil
 }

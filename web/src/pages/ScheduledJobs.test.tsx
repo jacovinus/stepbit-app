@@ -51,6 +51,17 @@ vi.mock('../api/executions', () => ({
   },
 }));
 
+vi.mock('../api/llm', () => ({
+  getCoreCronStatus: vi.fn(() =>
+    Promise.resolve({
+      scheduler_running: true,
+      total_jobs: 4,
+      failing_jobs: 1,
+      retrying_jobs: 2,
+    }),
+  ),
+}));
+
 vi.mock('../hooks/useStepbitCore', () => ({
   useStepbitCore: () => ({
     online: true,
@@ -82,6 +93,9 @@ describe('ScheduledJobs Page', () => {
     renderWithProviders(<ScheduledJobs />);
 
     expect((await screen.findAllByText('nightly_analysis')).length).toBeGreaterThan(0);
+    expect(screen.getByText('Core Scheduler Runtime')).toBeInTheDocument();
+    expect(screen.getAllByText('Registered Jobs').length).toBeGreaterThan(0);
+    expect(screen.getByText('Retry Queue')).toBeInTheDocument();
     expect(screen.getByText('Job Activity Feed')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Execution History' })).toBeInTheDocument();
   });
