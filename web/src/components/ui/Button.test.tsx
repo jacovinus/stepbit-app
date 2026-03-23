@@ -23,6 +23,6 @@ describe('Button Component', () => {
 
   it('applies correct variant classes', () => {
     const { container } = render(<Button variant="primary">Button</Button>)
-    expect(container.firstChild).toHaveClass('bg-monokai-blue')
+    expect(container.firstChild).toHaveClass('bg-monokai-aqua')
   })
 })

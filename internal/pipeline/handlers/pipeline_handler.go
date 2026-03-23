@@ -125,11 +125,13 @@ func (h *PipelineHandler) ExecutePipeline(c *fiber.Ctx) error {
 		if err != nil {
 			status = "failed"
 		}
+		result = core.NormalizeExecutionResult(result, pipeline.Definition)
 		_ = h.executionService.CompleteRun(runID, status, result, err)
 	}
 	if err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	result = core.NormalizeExecutionResult(result, pipeline.Definition)
 	return c.JSON(result)
 }

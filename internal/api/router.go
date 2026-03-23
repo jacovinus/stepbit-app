@@ -60,7 +60,7 @@ func NewRouter(coreClient *core.StepbitCoreClient, dbService *db.DbService, appC
 	executionModule := execution.NewExecutionModule(dbService.GetDB())
 	goalsModule := goals.NewGoalsModule(dbService.GetDB(), coreClient)
 	storageModule := storage.NewStorageModule(dbService.GetDB())
-	llmModule := llm.NewLlmModule(coreClient)
+	llmModule := llm.NewLlmModule(dbService.GetDB(), coreClient)
 
 	r := &Router{
 		App:      app,

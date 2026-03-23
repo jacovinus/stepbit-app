@@ -32,16 +32,20 @@ func TestBuildExecutionPayload(t *testing.T) {
 		t.Fatalf("expected typed stages slice, got %T", pipeline["stages"])
 	}
 
-	if len(stages) != 2 {
-		t.Fatalf("expected 2 stages, got %d", len(stages))
+	if len(stages) != 3 {
+		t.Fatalf("expected 3 stages, got %d", len(stages))
 	}
 
-	if stages[0]["stage_type"] != "planner_stage" {
+	if stages[0]["stage_type"] != "mcp_tool_stage" {
 		t.Fatalf("unexpected first stage: %v", stages[0]["stage_type"])
 	}
 
-	if stages[1]["stage_type"] != "synthesis_stage" {
+	if stages[1]["stage_type"] != "mcp_tool_stage" {
 		t.Fatalf("unexpected second stage: %v", stages[1]["stage_type"])
+	}
+
+	if stages[2]["stage_type"] != "verification_stage" {
+		t.Fatalf("unexpected third stage: %v", stages[2]["stage_type"])
 	}
 }
 
@@ -52,5 +56,27 @@ func TestBuildSourceIDTruncatesLongGoals(t *testing.T) {
 
 	if len(sourceID) > 96 {
 		t.Fatalf("expected source id length <= 96, got %d", len(sourceID))
+	}
+}
+
+func TestBuildExecutionPayloadForSkillGoalUsesSkillQuery(t *testing.T) {
+	service := NewGoalsService()
+
+	payload := service.BuildExecutionPayload(models.ExecuteGoalRequest{
+		Goal: "Review the latest skills and tell me what changed",
+	})
+
+	pipeline := payload["pipeline"].(map[string]interface{})
+	stages := pipeline["stages"].([]map[string]interface{})
+	config := stages[0]["config"].(map[string]interface{})
+	input := config["input"].(map[string]interface{})
+	query := input["query"].(string)
+
+	if query == "" || query[:6] != "SELECT" {
+		t.Fatalf("expected SQL query, got %q", query)
+	}
+
+	if !containsAny(query, "skills") {
+		t.Fatalf("expected skills query, got %q", query)
 	}
 }

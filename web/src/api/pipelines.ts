@@ -1,4 +1,5 @@
 import client from './client';
+import type { PipelineExecuteResult, StepbitCoreStatus } from '../types';
 
 export interface Pipeline {
   id: number;
@@ -6,27 +7,6 @@ export interface Pipeline {
   definition: any;
   created_at: string;
   updated_at: string;
-}
-
-export interface PipelineExecuteResult {
-  final_answer: string;
-  trace: string[];
-  tool_calls: any[];
-  intermediate_results: any[];
-}
-
-export interface StepbitCoreStatus {
-  online: boolean;
-  ready: boolean;
-  message: string;
-  active_model: string;
-  supported_models: string[];
-  metrics: {
-    requests_total: number;
-    tokens_generated_total: number;
-    active_sessions: number;
-    token_latency_avg_ms: number;
-  };
 }
 
 export const pipelinesApi = {

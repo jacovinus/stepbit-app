@@ -28,5 +28,7 @@ func NewGoalsModule(db *sql.DB, coreClient *core.StepbitCoreClient) *GoalsModule
 
 func (m *GoalsModule) RegisterRoutes(app *fiber.App) {
 	api := app.Group("/api/goals")
+	api.Post("/plan", m.GoalsHandler.PlanGoal)
 	api.Post("/execute", m.GoalsHandler.ExecuteGoal)
+	api.Post("/replan", m.GoalsHandler.ReplanGoal)
 }

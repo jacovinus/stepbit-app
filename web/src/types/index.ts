@@ -93,6 +93,22 @@ export interface PipelineExecuteResult {
   trace: string[];
   tool_calls: any[];
   intermediate_results: any[];
+  stage_summaries?: Array<{
+    index: number;
+    stage_type: string;
+    title: string;
+    status: string;
+    trace_excerpt?: string;
+    tool?: string;
+  }>;
+  runtime?: {
+    trace_steps: number;
+    tool_call_count: number;
+    intermediate_result_count: number;
+    stage_count: number;
+    completed_stage_count: number;
+  };
+  error?: string;
 }
 
 export interface StepbitCoreStatus {
@@ -107,4 +123,21 @@ export interface StepbitCoreStatus {
     active_sessions: number;
     token_latency_avg_ms: number;
   };
+  warnings?: string[];
+  capabilities?: {
+    planner_http: boolean;
+    replan_http: boolean;
+    distributed_http: boolean;
+    metrics_http: boolean;
+    mcp_registry_http: boolean;
+  };
+}
+
+export interface McpProviderStatus {
+  name: string;
+  enabled: boolean;
+  status: 'installed' | 'disabled' | 'failed' | string;
+  reason?: string | null;
+  capabilities: string[];
+  installed_tools: string[];
 }

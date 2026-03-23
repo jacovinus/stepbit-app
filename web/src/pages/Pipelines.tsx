@@ -16,6 +16,17 @@ import {
 import { pipelinesApi, type Pipeline } from '../api/pipelines';
 import { useStepbitCore } from '../hooks/useStepbitCore';
 
+type ExecutionTabId = 'answer' | 'stages' | 'trace' | 'data' | 'tools' | 'raw';
+
+const EXECUTION_TABS: Array<{ id: ExecutionTabId; label: string }> = [
+  { id: 'answer', label: 'Answer' },
+  { id: 'stages', label: 'Stages' },
+  { id: 'trace', label: 'Trace' },
+  { id: 'data', label: 'Data' },
+  { id: 'tools', label: 'Tools' },
+  { id: 'raw', label: 'Raw JSON' },
+];
+
 const Pipelines: React.FC = () => {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +47,9 @@ const Pipelines: React.FC = () => {
   const [executionQuestion, setExecutionQuestion] = useState('');
   const [executionRlmEnabled, setExecutionRlmEnabled] = useState(false);
   const [executionResult, setExecutionResult] = useState<any>(null);
+  const [executionTab, setExecutionTab] = useState<ExecutionTabId>('answer');
   const [executing, setExecuting] = useState(false);
+  const [traceFilter, setTraceFilter] = useState('');
 
   useEffect(() => {
     loadPipelines();
@@ -81,13 +94,17 @@ const Pipelines: React.FC = () => {
     if (!selectedPipeline || !executionQuestion) return;
     setExecuting(true);
     setExecutionResult(null);
+    setExecutionTab('answer');
+    setTraceFilter('');
     try {
       const res = await pipelinesApi.execute(selectedPipeline.id, executionQuestion, executionRlmEnabled);
       setExecutionResult(res);
+      setExecutionTab('answer');
     } catch (error: any) {
       console.error('Execution failed:', error);
       const errorMsg = error.response?.data || error.message || 'Failed to execute pipeline';
       setExecutionResult({ error: typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg) });
+      setExecutionTab('raw');
     } finally {
       setExecuting(false);
     }
@@ -175,6 +192,7 @@ const Pipelines: React.FC = () => {
                   setExecutionQuestion('');
                   setExecutionRlmEnabled(Boolean((pipeline.definition as any)?.rlm_enabled));
                   setExecutionResult(null);
+                  setTraceFilter('');
                   setIsExecutionModalOpen(true);
                 }}
                 onView={() => {
@@ -377,10 +395,10 @@ const Pipelines: React.FC = () => {
                 )}
 
                 {executionResult && (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Error Display */}
                     {executionResult.error && (
-                      <div className="bg-monokai-pink/10 border border-monokai-pink/20 rounded-2xl p-6">
+                      <div className="bg-monokai-pink/10 border border-monokai-pink/20 rounded-xs p-5">
                         <div className="flex items-center gap-3 text-monokai-pink mb-2">
                           <XCircle className="w-5 h-5" />
                           <span className="text-xs font-black uppercase tracking-widest">Execution Failure</span>
@@ -391,59 +409,189 @@ const Pipelines: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Trace Viewer */}
                     {!executionResult.error && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-monokai-aqua">
-                          <Activity className="w-4 h-4" />
-                          <span className="text-xs font-black uppercase tracking-widest">Reasoning Trace</span>
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                          <ResultStat label="Execution State" value={deriveExecutionState(executionResult)} />
+                          <ResultStat label="Stages Done" value={`${executionResult.runtime?.completed_stage_count || 0}/${executionResult.runtime?.stage_count || executionResult.stage_summaries?.length || 0}`} />
+                          <ResultStat label="Trace Steps" value={String(executionResult.runtime?.trace_steps || executionResult.trace?.length || 0)} />
+                          <ResultStat label="Tool Calls" value={String(executionResult.runtime?.tool_call_count || executionResult.tool_calls?.length || 0)} />
                         </div>
-                        <div className="bg-black/60 rounded-2xl p-6 space-y-3 max-h-[250px] overflow-auto border border-white/5">
-                          {executionResult.trace?.map((log: string, i: number) => (
-                            <div key={i} className="flex gap-4 items-start group">
-                              <span className="text-[10px] font-mono text-gruv-light-4 mt-1">0{i+1}</span>
-                              <p className="text-sm font-medium text-gruv-light-3 leading-relaxed group-hover:text-gruv-light-1 transition-colors">{log}</p>
-                            </div>
+
+                        <div className="rounded-xs border border-white/10 bg-black/30 p-4">
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-gruv-light-4">Runtime Progress</span>
+                            <span className="text-xs text-gruv-light-3">
+                              {executionResult.runtime?.completed_stage_count || 0} of {executionResult.runtime?.stage_count || executionResult.stage_summaries?.length || 0} stages completed
+                            </span>
+                          </div>
+                          <div className="w-full h-2 rounded-full bg-gruv-dark-4/40 overflow-hidden">
+                            <div
+                              className="h-full bg-monokai-green transition-all duration-500"
+                              style={{ width: `${getStageProgress(executionResult)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {EXECUTION_TABS.map((tab) => (
+                            <button
+                              key={tab.id}
+                              onClick={() => setExecutionTab(tab.id)}
+                              className={`px-3 py-2 rounded-xs text-sm font-medium border transition-colors ${
+                                executionTab === tab.id
+                                  ? 'bg-white text-black border-white'
+                                  : 'bg-gruv-dark-3 text-gruv-light-3 border-gruv-dark-4 hover:bg-gruv-dark-4'
+                              }`}
+                            >
+                              {tab.label}
+                            </button>
                           ))}
                         </div>
-                      </div>
-                    )}
 
-                    {!executionResult.error && executionResult.tool_calls?.length > 0 && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-monokai-green">
-                          <Settings className="w-4 h-4" />
-                          <span className="text-xs font-black uppercase tracking-widest">Tool Calls</span>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-monokai-orange">
+                            <Info className="w-4 h-4" />
+                            <span className="text-xs font-black uppercase tracking-widest">Final Answer</span>
+                          </div>
+                          <div className={`bg-monokai-orange/5 border border-monokai-orange/20 rounded-xs p-5 ${executionTab === 'answer' ? 'block' : 'hidden'}`}>
+                            <p className="text-gruv-light-1 font-medium leading-[1.7] whitespace-pre-wrap">
+                              {executionResult.final_answer || "No final answer synthesised."}
+                            </p>
+                          </div>
                         </div>
-                        <div className="bg-black/60 rounded-2xl p-6 border border-white/5 overflow-auto max-h-[220px]">
-                          <pre className="text-xs text-monokai-green font-mono whitespace-pre-wrap">
-                            {JSON.stringify(executionResult.tool_calls, null, 2)}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Final Answer */}
-                    {!executionResult.error && (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-monokai-orange">
-                          <Info className="w-4 h-4" />
-                          <span className="text-xs font-black uppercase tracking-widest">Final Synthesis</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <ResultStat label="Intermediate Results" value={String(executionResult.runtime?.intermediate_result_count || executionResult.intermediate_results?.length || 0)} />
+                          <ResultStat label="Question" value={executionQuestion ? 'Provided' : 'Missing'} />
+                          <ResultStat label="RLM" value={executionRlmEnabled ? 'Enabled' : 'Disabled'} />
                         </div>
-                        <div className="bg-monokai-orange/5 border border-monokai-orange/20 rounded-2xl p-6">
-                          <p className="text-gruv-light-1 font-medium leading-[1.6]">
-                            {executionResult.final_answer || "No final answer synthesised."}
-                          </p>
-                        </div>
-                      </div>
+
+                        {executionTab === 'stages' && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-monokai-green">
+                              <Layers className="w-4 h-4" />
+                              <span className="text-xs font-black uppercase tracking-widest">Stage Progress</span>
+                            </div>
+                            <div className="space-y-2">
+                              {(executionResult.stage_summaries || []).map((stage: any) => (
+                                <div key={`${stage.index}-${stage.title}`} className="rounded-xs border border-white/10 bg-black/60 p-4">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="text-sm font-semibold text-gruv-light-1">{stage.title}</p>
+                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${stage.status === 'completed' ? 'bg-monokai-green/15 text-monokai-green border-monokai-green/20' : stage.status === 'failed' ? 'bg-monokai-pink/15 text-monokai-pink border-monokai-pink/20' : 'bg-gruv-dark-4 text-gruv-light-3 border-white/10'}`}>
+                                      {stage.status}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1.5 flex flex-wrap gap-2 items-center">
+                                    <p className="text-[11px] uppercase tracking-[0.18em] text-gruv-light-4">{stage.stage_type}</p>
+                                    {stage.tool && (
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-monokai-aqua/10 text-monokai-aqua border border-monokai-aqua/20">
+                                        {stage.tool}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {stage.trace_excerpt && (
+                                    <p className="mt-2 text-sm text-gruv-light-3 whitespace-pre-wrap">{stage.trace_excerpt}</p>
+                                  )}
+                                </div>
+                              ))}
+                              {(!executionResult.stage_summaries || executionResult.stage_summaries.length === 0) && (
+                                <div className="rounded-xs border border-dashed border-white/10 bg-black/30 p-4 text-sm text-gruv-light-4">
+                                  This execution did not return stage metadata.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {executionTab === 'data' && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-monokai-purple">
+                              <Code className="w-4 h-4" />
+                              <span className="text-xs font-black uppercase tracking-widest">Intermediate Results</span>
+                            </div>
+                            <div className="bg-black/60 rounded-xs p-4 border border-white/5 overflow-auto max-h-[240px]">
+                              <pre className="text-sm text-gruv-light-3 font-mono whitespace-pre-wrap">
+                                {JSON.stringify(executionResult.intermediate_results || [], null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+
+                        {executionTab === 'trace' && (
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex items-center gap-2 text-monokai-aqua">
+                                <Activity className="w-4 h-4" />
+                                <span className="text-xs font-black uppercase tracking-widest">Reasoning Trace</span>
+                              </div>
+                              <input
+                                type="text"
+                                value={traceFilter}
+                                onChange={(e) => setTraceFilter(e.target.value)}
+                                placeholder="Filter trace..."
+                                className="rounded-xs bg-black/40 border border-white/10 px-3 py-2 text-sm text-gruv-light-1"
+                              />
+                            </div>
+                            <div className="bg-black/60 rounded-xs p-4 space-y-2.5 max-h-[220px] overflow-auto border border-white/5">
+                              {filterTrace(executionResult.trace || [], traceFilter).map((log: string, i: number) => (
+                                <div key={i} className="flex gap-3 items-start group">
+                                  <span className="text-[10px] font-mono text-gruv-light-4 mt-1 shrink-0">{String(i + 1).padStart(2, '0')}</span>
+                                  <p className="text-sm font-medium text-gruv-light-3 leading-relaxed group-hover:text-gruv-light-1 transition-colors whitespace-pre-wrap">
+                                    {log}
+                                  </p>
+                                </div>
+                              ))}
+                              {filterTrace(executionResult.trace || [], traceFilter).length === 0 && (
+                                <div className="text-sm text-gruv-light-4">No trace entries match the current filter.</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {executionTab === 'tools' && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-monokai-green">
+                              <Settings className="w-4 h-4" />
+                              <span className="text-xs font-black uppercase tracking-widest">Tool Calls</span>
+                            </div>
+                            <div className="bg-black/60 rounded-xs p-4 border border-white/5 overflow-auto max-h-[220px]">
+                              <pre className="text-sm text-monokai-green font-mono whitespace-pre-wrap">
+                                {JSON.stringify(executionResult.tool_calls || [], null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+
+                        {executionTab === 'raw' && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-gruv-light-3">
+                              <Code className="w-4 h-4" />
+                              <span className="text-xs font-black uppercase tracking-widest">Raw Response Payload</span>
+                            </div>
+                            <div className="bg-black/60 rounded-xs p-4 border border-white/5 overflow-auto max-h-[260px]">
+                              <pre className="text-sm text-gruv-light-2 font-mono whitespace-pre-wrap">
+                                {JSON.stringify(executionResult, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     <div className="flex gap-4">
                       <button 
-                        onClick={() => { setExecutionResult(null); setExecutionQuestion(''); }}
+                        onClick={() => { setExecutionResult(null); setExecutionQuestion(''); setExecutionTab('answer'); setTraceFilter(''); }}
                         className="flex-1 px-6 py-4 rounded-xl font-bold text-gruv-light-3 hover:bg-white/5 transition-colors"
                       >
                         Reset
+                      </button>
+                      <button
+                        onClick={handleExecute}
+                        disabled={executing || !executionQuestion}
+                        className="flex-1 bg-monokai-green text-black px-6 py-4 rounded-xl font-black disabled:opacity-60"
+                      >
+                        Retry
                       </button>
                       <button 
                         onClick={() => setIsExecutionModalOpen(false)}
@@ -479,6 +627,36 @@ const Pipelines: React.FC = () => {
       </AnimatePresence>
     </div>
   );
+};
+
+const ResultStat = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-xs border border-white/10 bg-gruv-dark-0/60 px-4 py-3">
+    <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">{label}</p>
+    <p className="mt-1.5 text-base font-semibold text-gruv-light-1">{value}</p>
+  </div>
+);
+
+const getStageProgress = (result: any) => {
+  const total = result?.runtime?.stage_count || result?.stage_summaries?.length || 0;
+  const completed = result?.runtime?.completed_stage_count || 0;
+  if (!total) return 0;
+  return Math.max(0, Math.min(100, (completed / total) * 100));
+};
+
+const deriveExecutionState = (result: any) => {
+  if (result?.error) return 'Failed';
+  const total = result?.runtime?.stage_count || result?.stage_summaries?.length || 0;
+  const completed = result?.runtime?.completed_stage_count || 0;
+  if (!total) return 'Completed';
+  if (completed >= total) return 'Completed';
+  if (completed > 0) return 'Partial';
+  return 'Started';
+};
+
+const filterTrace = (trace: string[], filter: string) => {
+  const normalized = filter.trim().toLowerCase();
+  if (!normalized) return trace;
+  return trace.filter((entry) => entry.toLowerCase().includes(normalized));
 };
 
 const PipelineCard: React.FC<{ 

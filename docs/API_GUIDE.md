@@ -48,10 +48,16 @@ Executes a pre-defined pipeline by its database ID.
 
 ## 🎯 Goal Mode API
 
-Execute a high-level objective through a planner-generated ephemeral pipeline.
+Execute a high-level objective through an app-managed plan that can be previewed, approved, executed, and replanned while dedicated planner endpoints are not yet exposed by `stepbit-core`.
+
+### `POST /api/goals/plan`
+Generates a previewable plan and temporary pipeline for a goal.
 
 ### `POST /api/goals/execute`
-Builds a temporary pipeline with `planner_stage` and `synthesis_stage`, sends it to `stepbit-core`, and records the execution locally in `Execution History`.
+Executes an approved goal plan, sends the temporary pipeline to `stepbit-core`, and records the execution locally in `Execution History`.
+
+### `POST /api/goals/replan`
+Generates a refreshed plan using the original goal, previous plan, and an optional failure reason.
 
 - **Headers**: `Content-Type: application/json`
 - **Body**:
@@ -65,27 +71,16 @@ Builds a temporary pipeline with `planner_stage` and `synthesis_stage`, sends it
   ```json
   {
     "goal": "Investigate the latest failed runs and summarize the likely root causes",
-    "pipeline": {
-      "name": "goal_mode_planner",
-      "rlm_enabled": false,
-      "stages": [
-        {
-          "stage_type": "planner_stage",
-          "config": {
-            "goal": "Investigate the latest failed runs and summarize the likely root causes"
-          }
-        },
-        {
-          "stage_type": "synthesis_stage",
-          "config": {}
-        }
-      ]
+    "plan": {
+      "planner_mode": "app_heuristic_v1",
+      "summary": "Investigate failures with execution history, recent runs, and targeted verification."
     },
     "result": {
       "final_answer": "Synthesised answer based on ...",
-      "trace": ["PlannerStage: goal '...' decomposed and executed", "SynthesisStage: final answer synthesised"],
+      "trace": ["McpToolStage: executed query", "GoalMode: final answer drafted via chat completions"],
       "tool_calls": [],
-      "intermediate_results": []
+      "intermediate_results": [],
+      "stage_summaries": []
     }
   }
   ```
@@ -195,6 +190,14 @@ Publishes a manual event into `stepbit-core`.
 ```
 
 ---
+
+## 🧰 MCP Tool Playground API
+
+### `GET /api/llm/mcp/tools`
+Lists registered MCP tools and their schemas.
+
+### `POST /api/llm/mcp/tools/:tool/execute`
+Runs an MCP tool through a temporary single-stage pipeline and records the execution locally.
 
 ## 🏗️ Reasoning Graph API
 
