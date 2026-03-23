@@ -140,6 +140,7 @@ export interface McpProviderStatus {
   reason?: string | null;
   capabilities: string[];
   installed_tools: string[];
+  planned_tools?: string[];
 }
 
 export interface CoreCheck {

@@ -371,6 +371,17 @@ function ProviderTile({ provider }: { provider: McpProviderStatus }) {
           <StatusPill key={tool} label={tool} className="border-monokai-orange/20 bg-monokai-orange/10 text-monokai-orange" />
         ))}
       </div>
+
+      {!!provider.planned_tools?.length && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Planned Tools</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {provider.planned_tools.map((tool) => (
+              <StatusPill key={tool} label={tool} className="border-monokai-purple/20 bg-monokai-purple/10 text-monokai-purple" />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
