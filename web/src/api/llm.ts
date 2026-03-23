@@ -17,6 +17,13 @@ export const getMcpProviders = async (): Promise<McpProviderStatus[]> => {
   return response.data;
 };
 
+export const fetchMcpProviderDoc = async (provider: string): Promise<string> => {
+  const response = await api.get(`llm/mcp/providers/${provider}/doc`, {
+    responseType: 'text',
+  });
+  return typeof response.data === 'string' ? response.data : String(response.data);
+};
+
 export const getCoreHealthReport = async (): Promise<CoreHealthReport> => {
   const response = await api.get('llm/core/health');
   return response.data;

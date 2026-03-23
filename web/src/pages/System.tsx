@@ -1,12 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, CheckCircle2, Clock3, Cpu, Loader2, PlugZap, ShieldCheck, Siren, Timer } from 'lucide-react';
-import { getCoreCronStatus, getCoreHealthReport, getCoreReadinessReport, getCoreRecentEvents, getCoreSystemRuntime, getMcpProviders } from '../api/llm';
+import { fetchMcpProviderDoc, getCoreCronStatus, getCoreHealthReport, getCoreReadinessReport, getCoreRecentEvents, getCoreSystemRuntime, getMcpProviders } from '../api/llm';
 import { pipelinesApi } from '../api/pipelines';
 import type { CoreCheck, CoreRecentEvent, McpProviderStatus, StepbitCoreStatus } from '../types';
 import { cn } from '../utils/cn';
+import { MarkdownContent } from '../components/MarkdownContent';
 
 export function System() {
+  const [selectedProviderName, setSelectedProviderName] = useState<string>('');
   const { data: coreStatus, isLoading: statusLoading } = useQuery({
     queryKey: ['system-core-status'],
     queryFn: () => pipelinesApi.getStepbitCoreStatus(),
@@ -60,6 +62,20 @@ export function System() {
     () => [...(healthReport?.checks ?? []), ...(readinessReport?.checks ?? [])],
     [healthReport?.checks, readinessReport?.checks],
   );
+  const selectedProvider = useMemo(() => {
+    const providerList = providers ?? [];
+    return providerList.find((provider) => provider.name === selectedProviderName)
+      || providerList.find((provider) => (provider.planned_tools?.length ?? 0) > 0)
+      || providerList[0]
+      || null;
+  }, [providers, selectedProviderName]);
+  const { data: selectedProviderDoc, isLoading: selectedProviderDocLoading } = useQuery({
+    queryKey: ['system-provider-doc', selectedProvider?.name],
+    queryFn: () => fetchMcpProviderDoc(selectedProvider!.name),
+    enabled: Boolean(selectedProvider?.name),
+    refetchInterval: 10000,
+    retry: false,
+  });
 
   return (
     <div className="flex flex-col gap-5">
@@ -244,10 +260,24 @@ export function System() {
         ) : !providers?.length ? (
           <EmptyMessage message="No provider data available." />
         ) : (
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="mt-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {providers.map((provider) => (
-              <ProviderTile key={provider.name} provider={provider} />
+              <ProviderTile
+                key={provider.name}
+                provider={provider}
+                selected={selectedProvider?.name === provider.name}
+                onSelect={setSelectedProviderName}
+              />
             ))}
+            </div>
+            {selectedProvider && (
+              <ProviderDetailPanel
+                provider={selectedProvider}
+                providerDoc={selectedProviderDoc}
+                providerDocLoading={selectedProviderDocLoading}
+              />
+            )}
           </div>
         )}
       </div>
@@ -334,15 +364,27 @@ function HealthCheckTile({ check }: { check: CoreCheck }) {
   );
 }
 
-function ProviderTile({ provider }: { provider: McpProviderStatus }) {
+function ProviderTile({
+  provider,
+  selected,
+  onSelect,
+}: {
+  provider: McpProviderStatus;
+  selected: boolean;
+  onSelect: (name: string) => void;
+}) {
   return (
-    <div className={cn(
+    <button
+      type="button"
+      onClick={() => onSelect(provider.name)}
+      className={cn(
       'rounded-xs border p-3',
       provider.status === 'installed'
         ? 'border-monokai-green/20 bg-monokai-green/5'
         : provider.status === 'failed'
           ? 'border-monokai-pink/20 bg-monokai-pink/5'
           : 'border-white/10 bg-white/5',
+      selected && 'ring-1 ring-monokai-aqua/40',
     )}>
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -382,6 +424,59 @@ function ProviderTile({ provider }: { provider: McpProviderStatus }) {
           </div>
         </div>
       )}
+    </button>
+  );
+}
+
+function ProviderDetailPanel({
+  provider,
+  providerDoc,
+  providerDocLoading,
+}: {
+  provider: McpProviderStatus;
+  providerDoc?: string;
+  providerDocLoading: boolean;
+}) {
+  return (
+    <div className="rounded-xs border border-monokai-aqua/20 bg-monokai-aqua/5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Selected Peripheral</p>
+          <h3 className="mt-2 text-base font-semibold text-gruv-light-1">{provider.name}</h3>
+          <p className="mt-1 text-xs text-gruv-light-4">
+            {provider.installed_tools.length} installed tool{provider.installed_tools.length === 1 ? '' : 's'} • {(provider.planned_tools?.length ?? 0)} planned
+          </p>
+        </div>
+        <StatusPill
+          label={provider.status}
+          className={
+            provider.status === 'installed'
+              ? 'border-monokai-green/20 bg-monokai-green/15 text-monokai-green'
+              : provider.status === 'failed'
+                ? 'border-monokai-pink/20 bg-monokai-pink/15 text-monokai-pink'
+                : 'border-white/10 bg-white/5 text-gruv-light-3'
+          }
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <ContextRow label="Installed Tools" value={provider.installed_tools.length > 0 ? provider.installed_tools.join(', ') : 'None'} />
+        <ContextRow label="Planned Tools" value={(provider.planned_tools?.length ?? 0) > 0 ? provider.planned_tools!.join(', ') : 'None'} />
+        <ContextRow label="Capabilities" value={provider.capabilities.length > 0 ? provider.capabilities.join(', ') : 'None'} />
+      </div>
+
+      <div className="mt-4 rounded-xs border border-white/10 bg-black/10 p-4">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Provider Guide</p>
+        {providerDocLoading ? (
+          <LoadingPane />
+        ) : providerDoc ? (
+          <div className="mt-3 max-h-[420px] overflow-y-auto pr-2">
+            <MarkdownContent content={providerDoc} />
+          </div>
+        ) : (
+          <EmptyMessage message="No provider guide available." />
+        )}
+      </div>
     </div>
   );
 }

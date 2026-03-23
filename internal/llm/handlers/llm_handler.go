@@ -8,6 +8,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"regexp"
 	executionServices "stepbit-app/internal/execution/services"
 	"stepbit-app/internal/llm/services"
 	"strings"
@@ -17,6 +18,8 @@ type LlmHandler struct {
 	llmService       *services.LlmService
 	executionService *executionServices.ExecutionService
 }
+
+var providerNamePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
 func NewLlmHandler(llmService *services.LlmService, executionService *executionServices.ExecutionService) *LlmHandler {
 	return &LlmHandler{llmService: llmService, executionService: executionService}
@@ -36,6 +39,29 @@ func (h *LlmHandler) ListMCPProviders(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(providers)
+}
+
+func (h *LlmHandler) GetMCPProviderDoc(c *fiber.Ctx) error {
+	provider := strings.TrimSpace(c.Params("provider"))
+	if provider == "" || !providerNamePattern.MatchString(provider) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid provider name"})
+	}
+
+	docPath, err := resolveProviderDocPath(provider)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	content, err := os.ReadFile(docPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "provider documentation not found"})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	c.Type("md")
+	return c.Send(content)
 }
 
 func (h *LlmHandler) GetCoreHealthReport(c *fiber.Ctx) error {
@@ -276,4 +302,30 @@ func allowedArtifactRoots() []string {
 		}
 	}
 	return resolved
+}
+
+func resolveProviderDocPath(provider string) (string, error) {
+	candidates := make([]string, 0, 4)
+	if coreRoot := os.Getenv("STEPBIT_CORE_ROOT"); coreRoot != "" {
+		candidates = append(candidates, filepath.Join(coreRoot, "src", "mcp", provider, "README.md"))
+	}
+
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates,
+			filepath.Join(cwd, "stepbit-core", "src", "mcp", provider, "README.md"),
+			filepath.Join(cwd, "..", "stepbit-core", "src", "mcp", provider, "README.md"),
+		)
+	}
+
+	for _, candidate := range candidates {
+		abs, err := filepath.Abs(candidate)
+		if err != nil {
+			continue
+		}
+		if info, statErr := os.Stat(abs); statErr == nil && !info.IsDir() {
+			return abs, nil
+		}
+	}
+
+	return "", fmt.Errorf("provider documentation not found for %s", provider)
 }

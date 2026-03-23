@@ -122,6 +122,9 @@ vi.mock('../api/llm', () => ({
       },
     ]),
   ),
+  fetchMcpProviderDoc: vi.fn((provider: string) =>
+    Promise.resolve(`# ${provider}\n\nProvider-local guide for ${provider}.`),
+  ),
 }));
 
 describe('System Page', () => {
@@ -133,7 +136,10 @@ describe('System Page', () => {
     expect(await screen.findByText('Recent Events')).toBeInTheDocument();
     expect(await screen.findByText('file.created')).toBeInTheDocument();
     expect(await screen.findByText('watcher')).toBeInTheDocument();
-    expect(await screen.findByText('Planned Tools')).toBeInTheDocument();
+    expect((await screen.findAllByText('Planned Tools')).length).toBeGreaterThan(0);
     expect(await screen.findByText('quantlab_sweep')).toBeInTheDocument();
+    expect(await screen.findByText('Selected Peripheral')).toBeInTheDocument();
+    expect(await screen.findByText('Provider Guide')).toBeInTheDocument();
+    expect(await screen.findByText('Provider-local guide for quantlab.')).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { deleteArtifact, executeMcpTool, fetchArtifactBlob, fetchArtifactText, getMcpTools, type McpTool } from '../api/llm';
+import { deleteArtifact, executeMcpTool, fetchArtifactBlob, fetchArtifactText, fetchMcpProviderDoc, getMcpProviders, getMcpTools, type McpTool } from '../api/llm';
 import { Wrench, Box, Code, Play, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ChartComponent } from '../components/ChartComponent';
@@ -7,9 +7,11 @@ import { MarkdownContent } from '../components/MarkdownContent';
 import { useAppDialog } from '../components/ui/AppDialogProvider';
 import { toast } from 'sonner';
 import { Link } from 'react-router';
+import type { McpProviderStatus } from '../types';
 
 const McpTools: React.FC = () => {
   const [tools, setTools] = useState<McpTool[]>([]);
+  const [providers, setProviders] = useState<McpProviderStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTool, setSelectedTool] = useState<string>('');
   const [guidedInput, setGuidedInput] = useState<Record<string, string>>({});
@@ -18,6 +20,10 @@ const McpTools: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
+  const [selectedPlannedTool, setSelectedPlannedTool] = useState<string>('');
+  const [plannedToolDoc, setPlannedToolDoc] = useState('');
+  const [plannedToolDocLoading, setPlannedToolDocLoading] = useState(false);
+  const [plannedToolDocError, setPlannedToolDocError] = useState('');
   const [artifactState, setArtifactState] = useState<QuantLabArtifactState>({
     reportMarkdown: '',
     reportJson: null,
@@ -30,11 +36,12 @@ const McpTools: React.FC = () => {
   const dialog = useAppDialog();
 
   useEffect(() => {
-    getMcpTools()
-      .then((data) => {
-        setTools(data);
-        if (data[0]?.name) {
-          setSelectedTool(data[0].name);
+    Promise.all([getMcpTools(), getMcpProviders()])
+      .then(([toolData, providerData]) => {
+        setTools(toolData);
+        setProviders(providerData);
+        if (toolData[0]?.name) {
+          setSelectedTool(toolData[0].name);
         }
       })
       .finally(() => setLoading(false));
@@ -53,6 +60,49 @@ const McpTools: React.FC = () => {
   const schemaExamples = useMemo(() => buildExamples(activeTool), [activeTool]);
   const quantLabResult = useMemo(() => getQuantLabResult(selectedTool, result), [selectedTool, result]);
   const quantLabCharts = useMemo(() => buildQuantLabCharts(quantLabResult), [quantLabResult]);
+  const plannedTools = useMemo(
+    () => providers.flatMap((provider) => (provider.planned_tools ?? []).map((tool) => ({ provider: provider.name, tool }))),
+    [providers],
+  );
+  const activePlannedTool = useMemo(
+    () => plannedTools.find((entry) => entry.tool === selectedPlannedTool) || plannedTools[0] || null,
+    [plannedTools, selectedPlannedTool],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProviderDoc = async () => {
+      if (!activePlannedTool?.provider) {
+        setPlannedToolDoc('');
+        setPlannedToolDocError('');
+        setPlannedToolDocLoading(false);
+        return;
+      }
+
+      setPlannedToolDocLoading(true);
+      setPlannedToolDocError('');
+      try {
+        const content = await fetchMcpProviderDoc(activePlannedTool.provider);
+        if (!cancelled) {
+          setPlannedToolDoc(content);
+          setPlannedToolDocLoading(false);
+        }
+      } catch (docError: any) {
+        if (!cancelled) {
+          setPlannedToolDoc('');
+          setPlannedToolDocLoading(false);
+          setPlannedToolDocError(docError?.message || 'Failed to load provider guide');
+        }
+      }
+    };
+
+    void loadProviderDoc();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePlannedTool]);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,6 +290,65 @@ const McpTools: React.FC = () => {
       </div>
 
       <div className="space-y-4">
+        {plannedTools.length > 0 && (
+          <section className="glass border border-white/10 rounded-xs p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-base font-semibold text-gruv-light-1">Planned Tool Surface</h2>
+                <p className="text-xs text-gruv-light-4 mt-1">These MCP tools are declared by the core as planned provider surface, but are not executable yet in the playground.</p>
+              </div>
+              <Link
+                to="/system"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-xs bg-white/5 border border-white/10 text-gruv-light-2 hover:bg-white/10 transition-colors text-xs font-semibold"
+              >
+                Review Providers
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {plannedTools.map(({ provider, tool }) => (
+                <button
+                  type="button"
+                  key={`${provider}-${tool}`}
+                  onClick={() => setSelectedPlannedTool(tool)}
+                  className={`px-2 py-1 rounded-full border text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                    activePlannedTool?.tool === tool
+                      ? 'border-monokai-purple/40 bg-monokai-purple/20 text-monokai-purple'
+                      : 'border-monokai-purple/20 bg-monokai-purple/10 text-monokai-purple'
+                  }`}
+                >
+                  {provider} • {tool}
+                </button>
+              ))}
+            </div>
+            {activePlannedTool && (
+              <div className="mt-4 rounded-xs border border-monokai-purple/20 bg-monokai-purple/5 p-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Planned Tool Details</p>
+                <h3 className="mt-2 text-base font-semibold text-gruv-light-1">{activePlannedTool.tool}</h3>
+                <p className="mt-1 text-xs text-gruv-light-4">Provider: {activePlannedTool.provider}</p>
+                <p className="mt-3 text-sm text-gruv-light-3">
+                  This tool is declared by the core as part of the provider surface, but it is not executable yet in the playground. Use System to inspect provider state, and treat this as a roadmap signal rather than a runtime error.
+                </p>
+                <div className="mt-4 rounded-xs border border-white/10 bg-black/10 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Provider Guide</p>
+                  {plannedToolDocLoading ? (
+                    <div className="mt-3 flex justify-center">
+                      <RefreshCw className="w-4 h-4 animate-spin text-monokai-aqua" />
+                    </div>
+                  ) : plannedToolDoc ? (
+                    <div className="mt-3 max-h-[360px] overflow-y-auto pr-2">
+                      <MarkdownContent content={plannedToolDoc} />
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-gruv-light-4">
+                      {plannedToolDocError || 'No provider guide available.'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {tools.map((tool) => (
             <motion.button
