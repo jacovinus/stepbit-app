@@ -1,5 +1,5 @@
 import api from './client';
-import type { McpProviderStatus } from '../types';
+import type { CoreCronStatus, CoreHealthReport, CoreReadinessReport, CoreRecentEvent, CoreSystemRuntime, McpProviderStatus } from '../types';
 
 export interface McpTool {
   name: string;
@@ -14,6 +14,33 @@ export const getMcpTools = async (): Promise<McpTool[]> => {
 
 export const getMcpProviders = async (): Promise<McpProviderStatus[]> => {
   const response = await api.get('llm/mcp/providers');
+  return response.data;
+};
+
+export const getCoreHealthReport = async (): Promise<CoreHealthReport> => {
+  const response = await api.get('llm/core/health');
+  return response.data;
+};
+
+export const getCoreReadinessReport = async (): Promise<CoreReadinessReport> => {
+  const response = await api.get('llm/core/readiness');
+  return response.data;
+};
+
+export const getCoreSystemRuntime = async (): Promise<CoreSystemRuntime> => {
+  const response = await api.get('llm/core/runtime');
+  return response.data;
+};
+
+export const getCoreCronStatus = async (): Promise<CoreCronStatus> => {
+  const response = await api.get('llm/core/cron-status');
+  return response.data;
+};
+
+export const getCoreRecentEvents = async (limit = 20): Promise<CoreRecentEvent[]> => {
+  const response = await api.get('llm/core/recent-events', {
+    params: { limit },
+  });
   return response.data;
 };
 

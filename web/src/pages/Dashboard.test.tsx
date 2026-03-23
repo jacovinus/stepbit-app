@@ -49,6 +49,37 @@ vi.mock('../api/executions', () => ({
 }));
 
 vi.mock('../api/llm', () => ({
+  getCoreHealthReport: vi.fn(() =>
+    Promise.resolve({
+      status: 'healthy',
+      ok: true,
+      checks: [
+        { name: 'state_dir', ok: true, detail: '/Users/test/.stepbit-core' },
+        { name: 'models_dir', ok: true, detail: '1 model(s) available' },
+      ],
+    }),
+  ),
+  getCoreReadinessReport: vi.fn(() =>
+    Promise.resolve({
+      status: 'ready',
+      ready: true,
+      reasons: [],
+      checks: [
+        { name: 'models_available', ok: true, detail: '1 model(s) detected on disk' },
+        { name: 'mcp_providers_ready', ok: true, detail: '2 enabled provider(s) installed' },
+      ],
+      context: {
+        state_dir: '/Users/test/.stepbit-core',
+        cron_db_path: '/Users/test/.stepbit-core/cron_jobs.db',
+        events_db_path: '/Users/test/.stepbit-core/events.db',
+        models_on_disk: 1,
+        loaded_models: 1,
+        mcp_enabled: 2,
+        mcp_installed: 2,
+        cron_scheduler_running: true,
+      },
+    }),
+  ),
   getMcpProviders: vi.fn(() =>
     Promise.resolve([
       {
@@ -113,6 +144,8 @@ describe('Dashboard Page', () => {
     expect(await screen.findByText('System Overview')).toBeInTheDocument();
     expect(await screen.findByText('planner timeout')).toBeInTheDocument();
     expect(await screen.findByText('MCP Peripherals')).toBeInTheDocument();
+    expect(await screen.findByText('Control Plane')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Open System View' })).toBeInTheDocument();
     expect(await screen.findByText('quantlab')).toBeInTheDocument();
     expect(screen.getByText('Latest Failure')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Execution History' })).toBeInTheDocument();

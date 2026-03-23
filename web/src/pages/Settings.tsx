@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings as SettingsIcon, Save, Key, Cpu, Sparkles, Loader2, Check, AlertCircle, RefreshCw, Github, Zap } from 'lucide-react';
 import { configApi } from '../api/config';
 import { clsx } from 'clsx';
+import { toast } from 'sonner';
 
 export const Settings = () => {
     const queryClient = useQueryClient();
@@ -41,9 +42,9 @@ export const Settings = () => {
         }
     });
 
-    const handleSaveAuth = () => {
+    const handleSaveAuth = async () => {
         localStorage.setItem('jacox_api_key', apiKey);
-        alert('Authentication settings saved locally!');
+        toast.success('Authentication settings saved locally.');
     };
 
     const activeProvider = providers?.find(p => p.active);

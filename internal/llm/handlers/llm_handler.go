@@ -38,6 +38,51 @@ func (h *LlmHandler) ListMCPProviders(c *fiber.Ctx) error {
 	return c.JSON(providers)
 }
 
+func (h *LlmHandler) GetCoreHealthReport(c *fiber.Ctx) error {
+	report, err := h.llmService.GetCoreHealthReport(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(report)
+}
+
+func (h *LlmHandler) GetCoreReadinessReport(c *fiber.Ctx) error {
+	report, err := h.llmService.GetCoreReadinessReport(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(report)
+}
+
+func (h *LlmHandler) GetCoreSystemRuntime(c *fiber.Ctx) error {
+	report, err := h.llmService.GetCoreSystemRuntime(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(report)
+}
+
+func (h *LlmHandler) GetCoreCronStatus(c *fiber.Ctx) error {
+	report, err := h.llmService.GetCoreCronStatus(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(report)
+}
+
+func (h *LlmHandler) GetCoreRecentEvents(c *fiber.Ctx) error {
+	limit := c.QueryInt("limit", 20)
+	if limit < 1 {
+		limit = 20
+	}
+
+	events, err := h.llmService.GetCoreRecentEvents(c.Context(), limit)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(events)
+}
+
 func (h *LlmHandler) ExecuteReasoning(c *fiber.Ctx) error {
 	var graph interface{}
 	if err := c.BodyParser(&graph); err != nil {

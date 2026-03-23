@@ -14,7 +14,8 @@ import {
     AlarmClock,
     BellRing,
     History,
-    Target
+    Target,
+    ShieldCheck
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -69,6 +70,7 @@ export const Layout = () => {
 
                 <nav className="flex flex-col gap-1 flex-grow overflow-y-auto pr-1 min-h-0">
                     <SidebarItem to="/" icon={LayoutDashboard}>Dashboard</SidebarItem>
+                    <SidebarItem to="/system" icon={ShieldCheck}>System</SidebarItem>
                     <SidebarItem to="/chat" icon={MessageSquare}>Chat</SidebarItem>
                     <SidebarItem to="/database" icon={Database}>Database</SidebarItem>
                     <SidebarItem to="/db-explorer" icon={Database}>SQL Explorer</SidebarItem>

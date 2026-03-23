@@ -6,14 +6,16 @@ import { Play, Table as TableIcon, Database, Info, Loader2, AlertCircle, Chevron
 import api from '../api/client';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useAppDialog } from '../components/ui/AppDialogProvider';
+import { toast } from 'sonner';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 interface QueryResponse {
-  columns: string[];
-  rows: Record<string, any>[];
+  columns: string[] | null;
+  rows: Record<string, any>[] | null;
 }
 
 interface SchemaInfo {
@@ -31,6 +33,7 @@ const DatabaseExplorer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'results' | 'schema'>('results');
   const [searchTerm, setSearchTerm] = useState('');
   const [snapshotting, setSnapshotting] = useState(false);
+  const dialog = useAppDialog();
 
   // Pagination
   const [pageSize] = useState(10);
@@ -49,7 +52,8 @@ const DatabaseExplorer: React.FC = () => {
       });
 
       const tables: Record<string, SchemaInfo> = {};
-      res.data.rows.forEach(row => {
+      const schemaRows = Array.isArray(res.data.rows) ? res.data.rows : [];
+      schemaRows.forEach(row => {
         if (!tables[row.table_name]) {
           tables[row.table_name] = { table_name: row.table_name, columns: [] };
         }
@@ -90,11 +94,14 @@ const DatabaseExplorer: React.FC = () => {
 
   const paginatedRows = useMemo(() => {
     if (!results) return [];
+    const safeRows = Array.isArray(results.rows) ? results.rows : [];
     const start = (currentPage - 1) * pageSize;
-    return results.rows.slice(start, start + pageSize);
+    return safeRows.slice(start, start + pageSize);
   }, [results, currentPage, pageSize]);
 
-  const totalPages = Math.ceil((results?.rows.length || 0) / pageSize);
+  const safeColumns = useMemo(() => (Array.isArray(results?.columns) ? results.columns : []), [results?.columns]);
+  const safeRows = useMemo(() => (Array.isArray(results?.rows) ? results.rows : []), [results?.rows]);
+  const totalPages = Math.ceil((safeRows.length || 0) / pageSize);
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] text-zinc-100 p-6 gap-6 overflow-hidden">
@@ -124,9 +131,15 @@ const DatabaseExplorer: React.FC = () => {
             setSnapshotting(true);
             try {
               const res = await api.post<{ status: string; path: string }>('snapshot', {});
-              alert(`Snapshot created at: ${res.data.path}`);
+              toast.success('Snapshot created', {
+                description: res.data.path,
+              });
             } catch (err: any) {
-              alert(`Snapshot failed: ${err?.message || 'Unknown error'}`);
+              await dialog.alert({
+                title: 'Snapshot failed',
+                description: err?.message || 'Unknown error',
+                tone: 'danger',
+              });
             } finally {
               setSnapshotting(false);
             }
@@ -193,7 +206,7 @@ const DatabaseExplorer: React.FC = () => {
               </div>
               {results && activeTab === 'results' && (
                 <span className="text-xs text-zinc-500 px-4">
-                  {results.rows.length} rows returned
+                  {safeRows.length} rows returned
                 </span>
               )}
             </div>
@@ -226,7 +239,7 @@ const DatabaseExplorer: React.FC = () => {
                     <table className="w-full text-left border-collapse min-w-full">
                       <thead className="sticky top-0 z-20 bg-[#121212] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[1px] after:bg-zinc-800">
                         <tr>
-                          {results.columns.map((col) => (
+                        {safeColumns.map((col) => (
                             <th key={col} className="px-4 py-3 text-xs font-bold text-zinc-400 uppercase tracking-wider bg-zinc-900/80 backdrop-blur-md">
                               {col}
                             </th>
@@ -236,7 +249,7 @@ const DatabaseExplorer: React.FC = () => {
                       <tbody>
                         {paginatedRows.map((row, i) => (
                           <tr key={i} className="border-b border-zinc-800/50 hover:bg-white/[0.02] transition-colors group">
-                            {results.columns.map((col) => (
+                            {safeColumns.map((col) => (
                               <td key={col} className="px-4 py-3 text-sm text-zinc-300 font-mono whitespace-nowrap overflow-hidden text-ellipsis max-w-[300px]">
                                 {typeof row[col] === 'object' && row[col] !== null 
                                   ? JSON.stringify(row[col]) 

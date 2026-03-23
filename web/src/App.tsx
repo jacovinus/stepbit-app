@@ -2,6 +2,8 @@ import { Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
+import { AppDialogProvider } from './components/ui/AppDialogProvider';
+import { Toaster } from 'sonner';
 import { Dashboard } from './pages/Dashboard';
 import { Chat } from './pages/Chat';
 import { Database } from './pages/Database';
@@ -15,6 +17,7 @@ const ScheduledJobs = lazy(() => import('./pages/ScheduledJobs'));
 const Triggers = lazy(() => import('./pages/Triggers'));
 const ExecutionHistory = lazy(() => import('./pages/ExecutionHistory'));
 const Goals = lazy(() => import('./pages/Goals'));
+const System = lazy(() => import('./pages/System').then((module) => ({ default: module.System })));
 
 const queryClient = new QueryClient();
 
@@ -36,25 +39,42 @@ function LazyPage({ children }: { children: ReactNode }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="chat" element={<Chat />} />
-            <Route path="database" element={<Database />} />
-            <Route path="skills" element={<Skills />} />
-            <Route path="mcp-tools" element={<LazyPage><McpTools /></LazyPage>} />
-            <Route path="reasoning" element={<LazyPage><ReasoningPlayground /></LazyPage>} />
-            <Route path="pipelines" element={<LazyPage><Pipelines /></LazyPage>} />
-            <Route path="scheduled-jobs" element={<LazyPage><ScheduledJobs /></LazyPage>} />
-            <Route path="triggers" element={<LazyPage><Triggers /></LazyPage>} />
-            <Route path="executions" element={<LazyPage><ExecutionHistory /></LazyPage>} />
-            <Route path="goals" element={<LazyPage><Goals /></LazyPage>} />
-            <Route path="db-explorer" element={<LazyPage><DatabaseExplorer /></LazyPage>} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <AppDialogProvider>
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          toastOptions={{
+            classNames: {
+              toast: '!border !border-white/10 !bg-gruv-dark-1 !text-gruv-light-1',
+              title: '!text-gruv-light-1',
+              description: '!text-gruv-light-3',
+              actionButton: '!bg-monokai-aqua !text-black',
+              cancelButton: '!bg-gruv-dark-3 !text-gruv-light-2',
+            },
+          }}
+        />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="system" element={<LazyPage><System /></LazyPage>} />
+              <Route path="chat" element={<Chat />} />
+              <Route path="database" element={<Database />} />
+              <Route path="skills" element={<Skills />} />
+              <Route path="mcp-tools" element={<LazyPage><McpTools /></LazyPage>} />
+              <Route path="reasoning" element={<LazyPage><ReasoningPlayground /></LazyPage>} />
+              <Route path="pipelines" element={<LazyPage><Pipelines /></LazyPage>} />
+              <Route path="scheduled-jobs" element={<LazyPage><ScheduledJobs /></LazyPage>} />
+              <Route path="triggers" element={<LazyPage><Triggers /></LazyPage>} />
+              <Route path="executions" element={<LazyPage><ExecutionHistory /></LazyPage>} />
+              <Route path="goals" element={<LazyPage><Goals /></LazyPage>} />
+              <Route path="db-explorer" element={<LazyPage><DatabaseExplorer /></LazyPage>} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </AppDialogProvider>
     </QueryClientProvider>
   );
 }

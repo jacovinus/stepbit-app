@@ -7,6 +7,7 @@ import { skillsApi, type Skill } from '../api/skills';
 import { useChatStream } from '../hooks/useChatStream';
 import { clsx } from 'clsx';
 import { MarkdownContent } from '../components/MarkdownContent';
+import { useAppDialog } from '../components/ui/AppDialogProvider';
 
 // ─── Skills Multi-Selector ───────────────────────────────────────────────────
 
@@ -156,6 +157,7 @@ export const Chat = () => {
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importText, setImportText] = useState('');
     const [isPurgeConfirmOpen, setIsPurgeConfirmOpen] = useState(false);
+    const dialog = useAppDialog();
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
@@ -292,7 +294,11 @@ export const Chat = () => {
             setImportText('');
         } catch (e) {
             console.error('Import failed:', e);
-            alert('Import failed. Please check the format.');
+            await dialog.alert({
+                title: 'Import failed',
+                description: 'Please check the session format and try again.',
+                tone: 'danger',
+            });
         }
     };
 
@@ -657,7 +663,11 @@ export const Chat = () => {
                                         const metadata = JSON.parse(metadataValue);
                                         updateSession.mutate({ id: activeSessionId!, metadata });
                                     } catch (e) {
-                                        alert('Invalid JSON');
+                                        void dialog.alert({
+                                            title: 'Invalid JSON',
+                                            description: 'Session metadata must be valid JSON before it can be saved.',
+                                            tone: 'danger',
+                                        });
                                     }
                                 }}
                                 className="btn-primary px-5 py-2 text-sm"

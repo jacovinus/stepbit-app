@@ -141,3 +141,74 @@ export interface McpProviderStatus {
   capabilities: string[];
   installed_tools: string[];
 }
+
+export interface CoreCheck {
+  name: string;
+  ok: boolean;
+  detail?: string;
+}
+
+export interface CoreHealthReport {
+  status: string;
+  ok: boolean;
+  checks: CoreCheck[];
+}
+
+export interface CoreReadinessContext {
+  state_dir: string;
+  cron_db_path: string;
+  events_db_path: string;
+  models_on_disk: number;
+  loaded_models: number;
+  mcp_enabled: number;
+  mcp_installed: number;
+  cron_scheduler_running: boolean;
+}
+
+export interface CoreReadinessReport {
+  status: string;
+  ready: boolean;
+  reasons: string[];
+  checks: CoreCheck[];
+  context: CoreReadinessContext;
+}
+
+export interface CoreTempRuntime {
+  registered_resources: number;
+  total_size_bytes: number;
+  pressure_level: string;
+  global_usage_bytes: number;
+  global_usage_files: number;
+  global_max_bytes: number;
+  global_max_files: number;
+  per_owner_max_bytes: number;
+  per_owner_max_files: number;
+}
+
+export interface CoreSystemRuntime {
+  state_dir: string;
+  cron_db_path: string;
+  events_db_path: string;
+  models_on_disk: number;
+  loaded_models: number;
+  mcp_providers: number;
+  installed_mcp_providers: number;
+  trigger_count: number;
+  scheduler_active: boolean;
+  temp: CoreTempRuntime;
+}
+
+export interface CoreCronStatus {
+  scheduler_running: boolean;
+  total_jobs: number;
+  failing_jobs: number;
+  retrying_jobs: number;
+}
+
+export interface CoreRecentEvent {
+  id: string;
+  event_type: string;
+  payload: any;
+  timestamp: string;
+  source_node?: string | null;
+}
