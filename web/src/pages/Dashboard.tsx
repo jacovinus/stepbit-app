@@ -422,7 +422,8 @@ function McpProvidersCard({
     const installed = providers.filter((provider) => provider.status === 'installed').length;
     const failed = providers.filter((provider) => provider.status === 'failed').length;
     const disabled = providers.filter((provider) => provider.status === 'disabled').length;
-    return { installed, failed, disabled };
+    const plannedTools = providers.reduce((count, provider) => count + (provider.planned_tools?.length ?? 0), 0);
+    return { installed, failed, disabled, plannedTools };
   }, [providers]);
 
   return (
@@ -437,6 +438,7 @@ function McpProvidersCard({
         </div>
         <div className="flex flex-wrap gap-2 text-[11px]">
           <SummaryPill label={`${summary.installed} installed`} className="border-monokai-green/20 bg-monokai-green/10 text-monokai-green" />
+          <SummaryPill label={`${summary.plannedTools} planned`} className="border-monokai-purple/20 bg-monokai-purple/10 text-monokai-purple" />
           <SummaryPill label={`${summary.failed} failed`} className="border-monokai-pink/20 bg-monokai-pink/10 text-monokai-pink" />
           <SummaryPill label={`${summary.disabled} disabled`} className="border-white/10 bg-white/5 text-gruv-light-3" />
         </div>
@@ -502,6 +504,17 @@ function McpProvidersCard({
                         <SummaryPill key={tool} label={tool} className="border-monokai-orange/20 bg-monokai-orange/10 text-monokai-orange" />
                       )) : (
                         <span className="text-xs text-gruv-light-4">No tools installed</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Planned Tools</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {(provider.planned_tools?.length ?? 0) > 0 ? provider.planned_tools!.map((tool) => (
+                        <SummaryPill key={tool} label={tool} className="border-monokai-purple/20 bg-monokai-purple/10 text-monokai-purple" />
+                      )) : (
+                        <span className="text-xs text-gruv-light-4">No planned tools</span>
                       )}
                     </div>
                   </div>

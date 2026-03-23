@@ -89,6 +89,7 @@ vi.mock('../api/llm', () => ({
         reason: null,
         capabilities: ['sql-query', 'local-data'],
         installed_tools: ['duckdb_query'],
+        planned_tools: [],
       },
       {
         name: 'quantlab',
@@ -97,6 +98,7 @@ vi.mock('../api/llm', () => ({
         reason: null,
         capabilities: ['quant-research', 'artifact-generation'],
         installed_tools: ['quantlab_run'],
+        planned_tools: ['quantlab_sweep', 'quantlab_forward', 'quantlab_portfolio'],
       },
     ]),
   ),
@@ -147,6 +149,8 @@ describe('Dashboard Page', () => {
     expect(await screen.findByText('Control Plane')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Open System View' })).toBeInTheDocument();
     expect(await screen.findByText('quantlab')).toBeInTheDocument();
+    expect(await screen.findByText('3 planned')).toBeInTheDocument();
+    expect(await screen.findByText('quantlab_sweep')).toBeInTheDocument();
     expect(screen.getByText('Latest Failure')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Execution History' })).toBeInTheDocument();
   });
