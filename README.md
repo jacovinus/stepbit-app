@@ -28,6 +28,7 @@ Built with Go, DuckDB, React 19, and Vite, it is designed to sit in front of `st
 
 ### Reasoning & Automation
 - Cognitive pipeline CRUD and execution
+- Goal planning, approval, execution, and replan flow
 - Optional `RLM` toggle for deeper recursive reasoning
 - Reasoning Playground for graph-based execution
 - Scheduled Jobs backed by `stepbit-core` cron endpoints
@@ -43,7 +44,7 @@ Built with Go, DuckDB, React 19, and Vite, it is designed to sit in front of `st
 ### Data & Tooling
 - DuckDB-backed local memory layer
 - SQL Explorer and database inspection flows
-- MCP tool discovery and integration surfaces
+- MCP tool discovery plus execution playground
 - Skill library for reusable prompt assets
 
 ## Product Surfaces
@@ -195,10 +196,11 @@ The application currently supports:
 
 - local-first chat and persistence
 - pipeline execution routed through `stepbit-core`
+- goal planning with plan preview and replan support
 - scheduled jobs UI
 - triggers UI
 - execution history
-- operational dashboard with readiness-aware core monitoring
+- operational dashboard with readiness-aware core monitoring and runtime warnings
 
 The roadmap continues toward richer execution history, more advanced planner-driven flows, and deeper control-plane functionality.
 

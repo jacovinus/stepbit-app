@@ -53,7 +53,7 @@ export const Layout = () => {
         <div className="flex h-screen bg-gruv-dark-1 text-gruv-light-1 overflow-hidden font-sans text-sm">
             {!isOnline && <DisconnectedOverlay isRetrying={isRetrying} />}
             {/* Sidebar */}
-            <aside className="w-56 xl:w-60 bg-gruv-dark-0 border-r border-gruv-dark-4/30 p-3 flex flex-col gap-3 overflow-hidden">
+            <aside className="w-56 min-w-56 xl:w-60 xl:min-w-60 shrink-0 bg-gruv-dark-0 border-r border-gruv-dark-4/30 p-3 flex flex-col gap-3 overflow-hidden">
                 <div className="flex items-center gap-2 px-1">
                     <div className="w-8 h-8 bg-gradient-to-br from-monokai-pink to-monokai-purple rounded-xs flex items-center justify-center shadow-md">
                         <Cpu className="text-white w-4 h-4" />
@@ -131,7 +131,7 @@ export const Layout = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-grow overflow-auto relative">
+            <main className="flex-grow min-w-0 overflow-auto relative">
                 <div className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-monokai-pink/4 to-transparent pointer-events-none" />
                 <div className="p-4 md:p-5 relative z-10 w-full">
                     <Outlet />

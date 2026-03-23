@@ -9,13 +9,21 @@ export const useStepbitCore = (interval = 30000) => {
     message: 'Checking...',
     active_model: '',
     supported_models: [],
-    metrics: {
-      requests_total: 0,
-      tokens_generated_total: 0,
-      active_sessions: 0,
-      token_latency_avg_ms: 0,
-    },
-  });
+      metrics: {
+        requests_total: 0,
+        tokens_generated_total: 0,
+        active_sessions: 0,
+        token_latency_avg_ms: 0,
+      },
+      warnings: [],
+      capabilities: {
+        planner_http: false,
+        replan_http: false,
+        distributed_http: false,
+        metrics_http: false,
+        mcp_registry_http: false,
+      },
+    });
   const [loading, setLoading] = useState(true);
 
   const checkStatus = useCallback(async () => {
@@ -34,6 +42,14 @@ export const useStepbitCore = (interval = 30000) => {
           tokens_generated_total: 0,
           active_sessions: 0,
           token_latency_avg_ms: 0,
+        },
+        warnings: [],
+        capabilities: {
+          planner_http: false,
+          replan_http: false,
+          distributed_http: false,
+          metrics_http: false,
+          mcp_registry_http: false,
         },
       });
     } finally {

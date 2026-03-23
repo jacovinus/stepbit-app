@@ -1,10 +1,12 @@
 package llm
 
 import (
+	"database/sql"
+	"github.com/gofiber/fiber/v2"
 	"stepbit-app/internal/core"
+	executionServices "stepbit-app/internal/execution/services"
 	"stepbit-app/internal/llm/handlers"
 	"stepbit-app/internal/llm/services"
-	"github.com/gofiber/fiber/v2"
 )
 
 type LlmModule struct {
@@ -12,9 +14,10 @@ type LlmModule struct {
 	LlmService *services.LlmService
 }
 
-func NewLlmModule(coreClient *core.StepbitCoreClient) *LlmModule {
+func NewLlmModule(db *sql.DB, coreClient *core.StepbitCoreClient) *LlmModule {
 	llmService := services.NewLlmService(coreClient)
-	llmHandler := handlers.NewLlmHandler(llmService)
+	executionService := executionServices.NewExecutionService(db)
+	llmHandler := handlers.NewLlmHandler(llmService, executionService)
 
 	return &LlmModule{
 		LlmHandler: llmHandler,
@@ -28,6 +31,10 @@ func (m *LlmModule) RegisterRoutes(app *fiber.App) {
 	// LLM Proxy (stepbit-core passthrough)
 	llm := api.Group("/llm")
 	llm.Get("/mcp/tools", m.LlmHandler.ListMCPTools)
+	llm.Get("/mcp/providers", m.LlmHandler.ListMCPProviders)
+	llm.Get("/artifacts", m.LlmHandler.GetArtifact)
+	llm.Delete("/artifacts", m.LlmHandler.DeleteArtifact)
+	llm.Post("/mcp/tools/:tool/execute", m.LlmHandler.ExecuteMCPTool)
 	llm.Post("/reasoning/execute", m.LlmHandler.ExecuteReasoning)
 	llm.Post("/reasoning/execute/stream", m.LlmHandler.ExecuteReasoningStream)
 

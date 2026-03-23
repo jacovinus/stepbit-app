@@ -18,4 +18,10 @@ export const executionsApi = {
     const response = await client.get(`/executions?limit=${limit}&offset=${offset}`);
     return response.data;
   },
+  delete: async (id: number): Promise<void> => {
+    await client.delete(`/executions/${id}`);
+  },
+  deleteAll: async (): Promise<void> => {
+    await client.delete('/executions');
+  },
 };

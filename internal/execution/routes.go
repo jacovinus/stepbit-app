@@ -26,4 +26,6 @@ func NewExecutionModule(db *sql.DB) *ExecutionModule {
 func (m *ExecutionModule) RegisterRoutes(app *fiber.App) {
 	api := app.Group("/api/executions")
 	api.Get("/", m.ExecutionHandler.ListRuns)
+	api.Delete("/", m.ExecutionHandler.DeleteAllRuns)
+	api.Delete("/:id", m.ExecutionHandler.DeleteRun)
 }

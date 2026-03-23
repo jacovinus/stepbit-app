@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	stdjson "encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/goccy/go-json"
 )
+
+var ErrPlannerEndpointsUnavailable = errors.New("planner endpoints unavailable")
 
 // Message represents a chat message
 type Message struct {
@@ -236,6 +239,31 @@ func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Messag
 	return nil
 }
 
+// ChatCompletion aggregates a non-streaming response using the chat streaming API.
+func (c *StepbitCoreClient) ChatCompletion(ctx context.Context, messages []Message, options ChatOptions) (string, error) {
+	tokenChan := make(chan StreamMessage, 128)
+	errChan := make(chan error, 1)
+
+	go func() {
+		errChan <- c.ChatStreaming(ctx, messages, options, tokenChan)
+		close(tokenChan)
+	}()
+
+	var builder strings.Builder
+	for msg := range tokenChan {
+		if msg.Type != "chunk" {
+			continue
+		}
+		builder.WriteString(msg.Content)
+	}
+
+	if err := <-errChan; err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(builder.String()), nil
+}
+
 // GetMCPTools fetches the list of MCP tools from stepbit-core
 func (c *StepbitCoreClient) GetMCPTools(ctx context.Context) ([]map[string]interface{}, error) {
 	// Try the current core path first, then fall back to the legacy compatibility path.
@@ -263,6 +291,28 @@ func (c *StepbitCoreClient) GetMCPTools(ctx context.Context) ([]map[string]inter
 		return result.Tools, nil
 	}
 	return []map[string]interface{}{}, lastErr
+}
+
+func (c *StepbitCoreClient) GetMCPProviders(ctx context.Context) ([]map[string]interface{}, error) {
+	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, "/v1/mcp/providers", nil)
+	if err != nil {
+		return []map[string]interface{}{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return []map[string]interface{}{}, fmt.Errorf("mcp providers request failed (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Providers []map[string]interface{} `json:"providers"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return []map[string]interface{}{}, err
+	}
+
+	return result.Providers, nil
 }
 
 // ExecuteReasoning executes a reasoning graph synchronously
@@ -335,6 +385,48 @@ func (c *StepbitCoreClient) ExecutePipeline(ctx context.Context, payload interfa
 		return nil, err
 	}
 	return result, nil
+}
+
+func (c *StepbitCoreClient) PlanGoal(ctx context.Context, payload interface{}) (map[string]interface{}, error) {
+	return c.callPlannerEndpoint(ctx, []string{"/v1/goals/plan", "/v1/planner/plan"}, payload)
+}
+
+func (c *StepbitCoreClient) ReplanGoal(ctx context.Context, payload interface{}) (map[string]interface{}, error) {
+	return c.callPlannerEndpoint(ctx, []string{"/v1/goals/replan", "/v1/planner/replan"}, payload)
+}
+
+func (c *StepbitCoreClient) callPlannerEndpoint(ctx context.Context, paths []string, payload interface{}) (map[string]interface{}, error) {
+	var lastErr error
+	for _, path := range paths {
+		resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, path, payload)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed {
+			resp.Body.Close()
+			lastErr = ErrPlannerEndpointsUnavailable
+			continue
+		}
+
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			return nil, fmt.Errorf("planner request failed (%d): %s", resp.StatusCode, string(body))
+		}
+
+		var result map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
+	if lastErr == nil {
+		lastErr = ErrPlannerEndpointsUnavailable
+	}
+	return nil, lastErr
 }
 
 // CheckHealth verifies if stepbit-core is reachable
@@ -468,6 +560,14 @@ func (c *StepbitCoreClient) GetCoreStatus(ctx context.Context) CoreStatus {
 		ActiveModel:     c.DefaultModel,
 		SupportedModels: []string{},
 		Metrics:         CoreMetricsSummary{},
+		Warnings:        []string{},
+		Capabilities: CoreCapabilities{
+			PlannerHTTP:     false,
+			ReplanHTTP:      false,
+			DistributedHTTP: false,
+			MetricsHTTP:     false,
+			MCPRegistryHTTP: true,
+		},
 	}
 
 	online, healthMessage := c.CheckHealth(ctx)
@@ -494,9 +594,44 @@ func (c *StepbitCoreClient) GetCoreStatus(ctx context.Context) CoreStatus {
 
 	if metrics, err := c.GetMetricsSummary(ctx); err == nil {
 		status.Metrics = metrics
+		status.Capabilities.MetricsHTTP = true
+	}
+
+	if !status.Ready {
+		status.Warnings = append(status.Warnings, "Core is reachable but not yet ready for full execution.")
+	}
+	if status.Metrics.TokenLatencyAvgMs > 500 {
+		status.Warnings = append(status.Warnings, "Average token latency is elevated.")
+	}
+	if status.Metrics.ActiveSessions > 8 {
+		status.Warnings = append(status.Warnings, "Active session count suggests runtime pressure.")
+	}
+	if status.Capabilities.MetricsHTTP && status.Metrics.RequestsTotal == 0 {
+		status.Warnings = append(status.Warnings, "Metrics are available but no requests have been processed yet.")
 	}
 
 	return status
+}
+
+func (c *StepbitCoreClient) ExecuteMCPTool(ctx context.Context, tool string, input interface{}) (map[string]interface{}, error) {
+	payload := map[string]interface{}{
+		"question": fmt.Sprintf("Execute MCP tool %s and return the structured result.", tool),
+		"pipeline": map[string]interface{}{
+			"name":        "mcp_tool_playground",
+			"rlm_enabled": false,
+			"stages": []map[string]interface{}{
+				{
+					"stage_type": "mcp_tool_stage",
+					"config": map[string]interface{}{
+						"tool":  tool,
+						"input": input,
+					},
+				},
+			},
+		},
+	}
+
+	return c.ExecutePipeline(ctx, payload)
 }
 
 func parseMetricsSummary(input string) CoreMetricsSummary {
@@ -574,6 +709,14 @@ type CoreMetricsSummary struct {
 	TokenLatencyAvgMs float64 `json:"token_latency_avg_ms"`
 }
 
+type CoreCapabilities struct {
+	PlannerHTTP     bool `json:"planner_http"`
+	ReplanHTTP      bool `json:"replan_http"`
+	DistributedHTTP bool `json:"distributed_http"`
+	MetricsHTTP     bool `json:"metrics_http"`
+	MCPRegistryHTTP bool `json:"mcp_registry_http"`
+}
+
 type CoreStatus struct {
 	Online          bool               `json:"online"`
 	Ready           bool               `json:"ready"`
@@ -581,6 +724,8 @@ type CoreStatus struct {
 	ActiveModel     string             `json:"active_model"`
 	SupportedModels []string           `json:"supported_models"`
 	Metrics         CoreMetricsSummary `json:"metrics"`
+	Warnings        []string           `json:"warnings"`
+	Capabilities    CoreCapabilities   `json:"capabilities"`
 }
 
 type EventTrigger struct {

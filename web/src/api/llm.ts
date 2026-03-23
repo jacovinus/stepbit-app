@@ -1,4 +1,5 @@
 import api from './client';
+import type { McpProviderStatus } from '../types';
 
 export interface McpTool {
   name: string;
@@ -8,6 +9,39 @@ export interface McpTool {
 
 export const getMcpTools = async (): Promise<McpTool[]> => {
   const response = await api.get('llm/mcp/tools');
+  return response.data;
+};
+
+export const getMcpProviders = async (): Promise<McpProviderStatus[]> => {
+  const response = await api.get('llm/mcp/providers');
+  return response.data;
+};
+
+export const executeMcpTool = async (tool: string, input: any): Promise<any> => {
+  const response = await api.post(`llm/mcp/tools/${tool}/execute`, { input });
+  return response.data;
+};
+
+export const fetchArtifactText = async (path: string): Promise<string> => {
+  const response = await api.get('llm/artifacts', {
+    params: { path },
+    responseType: 'text',
+  });
+  return typeof response.data === 'string' ? response.data : String(response.data);
+};
+
+export const fetchArtifactBlob = async (path: string): Promise<Blob> => {
+  const response = await api.get('llm/artifacts', {
+    params: { path },
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const deleteArtifact = async (path: string): Promise<{ deleted: boolean; path: string }> => {
+  const response = await api.delete('llm/artifacts', {
+    params: { path },
+  });
   return response.data;
 };
 

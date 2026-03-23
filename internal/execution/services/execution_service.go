@@ -81,6 +81,16 @@ func (s *ExecutionService) ListRuns(limit, offset int) ([]models.ExecutionRun, e
 	return runs, nil
 }
 
+func (s *ExecutionService) DeleteRun(id int64) error {
+	_, err := s.db.Exec("DELETE FROM execution_runs WHERE id = ?", id)
+	return err
+}
+
+func (s *ExecutionService) DeleteAllRuns() error {
+	_, err := s.db.Exec("DELETE FROM execution_runs")
+	return err
+}
+
 func decodeJSON(raw string) any {
 	if raw == "" {
 		return map[string]any{}

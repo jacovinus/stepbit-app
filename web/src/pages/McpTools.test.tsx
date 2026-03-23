@@ -10,7 +10,7 @@ vi.mock('../api/llm', () => ({
 describe('McpTools Page', () => {
   it('should show the list of tools', async () => {
     render(<McpTools />);
-    expect(await screen.findByText('test-tool')).toBeInTheDocument();
+    expect((await screen.findAllByText('test-tool')).length).toBeGreaterThan(0);
     expect(screen.getByText('desc')).toBeInTheDocument();
   });
 });

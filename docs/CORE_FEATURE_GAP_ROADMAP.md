@@ -14,29 +14,32 @@ Turn `stepbit-app` from a solid manual workflow UI into a full control plane for
 - skills CRUD
 - pipelines CRUD and execution
 - reasoning execution and streaming
-- MCP tool listing
+- MCP tool listing and execution playground
 - storage/query tools
 - provider/model configuration
+- scheduled jobs management
+- triggers management and manual event publishing
+- goal plan preview, approval, execute, and replan flow
+- execution history
 
 The main product gaps are:
 
-- scheduled automation
-- event-driven workflows
-- planner and goal-based execution
-- richer pipeline execution UX
-- orchestrator and runtime observability
+- deeper orchestrator observability
 - distributed execution visibility
+- plan memory and reuse
+- guided reasoning builder validation
+- orchestrator and runtime observability
 
 ## Feature Matrix
 
 | Core Feature | Current App Status | Gap | Priority | Effort |
 | --- | --- | --- | --- | --- |
-| Cron scheduler / scheduled jobs | Missing | No backend module, API proxy, or UI | High | Medium |
-| Event bus and triggers | Missing | No trigger manager, event viewer, or event-driven UX | High | Medium-High |
-| Planner / goal mode | Missing | No goal input, plan preview, approval, or replan UX | High | High |
+| Cron scheduler / scheduled jobs | Partial | Exists, but still relies too heavily on raw payload editing and lacks richer validation | High | Medium |
+| Event bus and triggers | Partial | Exists, but needs richer event debugging and more guided rule construction | High | Medium-High |
+| Planner / goal mode | Partial | Plan/execute/replan exists in app-managed form; missing native planner endpoints and plan memory | High | High |
 | Orchestrator observability | Partial | No admission, queue, runtime, or execution visibility | High | Medium |
 | Advanced pipeline execution | Partial | Missing stage streaming, RLM toggle, retries, richer traces | High | Medium |
-| MCP catalog UX | Partial | Missing schemas, examples, and tool playground | Medium | Medium |
+| MCP catalog UX | Partial | Playground exists; still missing richer examples, saved runs, and schema-driven forms | Medium | Medium |
 | Advanced reasoning builder | Partial | Playground exists, but lacks guided builder and validation UX | Medium | Medium-High |
 | Core health / readiness / metrics | Partial | Dashboard is too shallow for operations | High | Low-Medium |
 | Distributed execution / workers | Missing | No cluster or worker visibility in app | Medium | High |
