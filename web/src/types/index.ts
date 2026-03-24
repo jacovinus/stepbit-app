@@ -135,6 +135,7 @@ export interface StepbitCoreStatus {
 
 export interface McpProviderStatus {
   name: string;
+  provider_type: 'native' | 'external' | string;
   enabled: boolean;
   status: 'installed' | 'disabled' | 'failed' | string;
   reason?: string | null;

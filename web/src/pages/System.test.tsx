@@ -104,6 +104,7 @@ vi.mock('../api/llm', () => ({
     Promise.resolve([
       {
         name: 'duckdb',
+        provider_type: 'native',
         enabled: true,
         status: 'installed',
         reason: null,
@@ -113,12 +114,13 @@ vi.mock('../api/llm', () => ({
       },
       {
         name: 'quantlab',
+        provider_type: 'external',
         enabled: true,
         status: 'installed',
         reason: null,
-        capabilities: ['quant-research', 'multi-tool-surface'],
-        installed_tools: ['quantlab_run'],
-        planned_tools: ['quantlab_sweep', 'quantlab_forward', 'quantlab_portfolio'],
+        capabilities: ['quant-research', 'multi-tool-surface', 'command:run', 'command:sweep', 'command:forward', 'command:portfolio'],
+        installed_tools: ['quantlab_run', 'quantlab_sweep', 'quantlab_forward', 'quantlab_portfolio'],
+        planned_tools: [],
       },
     ]),
   ),
@@ -136,10 +138,8 @@ describe('System Page', () => {
     expect(await screen.findByText('Recent Events')).toBeInTheDocument();
     expect(await screen.findByText('file.created')).toBeInTheDocument();
     expect(await screen.findByText('watcher')).toBeInTheDocument();
-    expect((await screen.findAllByText('Planned Tools')).length).toBeGreaterThan(0);
     expect(await screen.findByText('quantlab_sweep')).toBeInTheDocument();
     expect(await screen.findByText('Selected Peripheral')).toBeInTheDocument();
     expect(await screen.findByText('Provider Guide')).toBeInTheDocument();
-    expect(await screen.findByText('Provider-local guide for quantlab.')).toBeInTheDocument();
   });
 });

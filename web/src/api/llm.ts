@@ -17,6 +17,11 @@ export const getMcpProviders = async (): Promise<McpProviderStatus[]> => {
   return response.data;
 };
 
+export const updateMcpProviderState = async (provider: string, enabled: boolean): Promise<McpProviderStatus> => {
+  const response = await api.post(`llm/mcp/providers/${provider}/state`, { enabled });
+  return response.data;
+};
+
 export const fetchMcpProviderDoc = async (provider: string): Promise<string> => {
   const response = await api.get(`llm/mcp/providers/${provider}/doc`, {
     responseType: 'text',

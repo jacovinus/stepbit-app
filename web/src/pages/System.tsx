@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, CheckCircle2, Clock3, Cpu, Loader2, PlugZap, ShieldCheck, Siren, Timer } from 'lucide-react';
-import { fetchMcpProviderDoc, getCoreCronStatus, getCoreHealthReport, getCoreReadinessReport, getCoreRecentEvents, getCoreSystemRuntime, getMcpProviders } from '../api/llm';
+import { fetchMcpProviderDoc, getCoreCronStatus, getCoreHealthReport, getCoreReadinessReport, getCoreRecentEvents, getCoreSystemRuntime, getMcpProviders, updateMcpProviderState } from '../api/llm';
 import { pipelinesApi } from '../api/pipelines';
 import type { CoreCheck, CoreRecentEvent, McpProviderStatus, StepbitCoreStatus } from '../types';
 import { cn } from '../utils/cn';
@@ -9,6 +9,7 @@ import { MarkdownContent } from '../components/MarkdownContent';
 
 export function System() {
   const [selectedProviderName, setSelectedProviderName] = useState<string>('');
+  const queryClient = useQueryClient();
   const { data: coreStatus, isLoading: statusLoading } = useQuery({
     queryKey: ['system-core-status'],
     queryFn: () => pipelinesApi.getStepbitCoreStatus(),
@@ -75,6 +76,17 @@ export function System() {
     enabled: Boolean(selectedProvider?.name),
     refetchInterval: 10000,
     retry: false,
+  });
+  const providerStateMutation = useMutation({
+    mutationFn: ({ provider, enabled }: { provider: string; enabled: boolean }) =>
+      updateMcpProviderState(provider, enabled),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['system-mcp-providers'] }),
+        queryClient.invalidateQueries({ queryKey: ['system-core-readiness'] }),
+        queryClient.invalidateQueries({ queryKey: ['system-runtime'] }),
+      ]);
+    },
   });
 
   return (
@@ -268,6 +280,8 @@ export function System() {
                 provider={provider}
                 selected={selectedProvider?.name === provider.name}
                 onSelect={setSelectedProviderName}
+                isMutating={providerStateMutation.isPending && providerStateMutation.variables?.provider === provider.name}
+                onToggleExternal={(enabled) => providerStateMutation.mutate({ provider: provider.name, enabled })}
               />
             ))}
             </div>
@@ -368,10 +382,14 @@ function ProviderTile({
   provider,
   selected,
   onSelect,
+  isMutating,
+  onToggleExternal,
 }: {
   provider: McpProviderStatus;
   selected: boolean;
   onSelect: (name: string) => void;
+  isMutating: boolean;
+  onToggleExternal: (enabled: boolean) => void;
 }) {
   return (
     <button
@@ -389,7 +407,7 @@ function ProviderTile({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-gruv-light-1">{provider.name}</p>
-          <p className="mt-1 text-[11px] text-gruv-light-4">{provider.enabled ? 'enabled' : 'disabled'} • {provider.status}</p>
+          <p className="mt-1 text-[11px] text-gruv-light-4">{provider.provider_type} • {provider.enabled ? 'enabled' : 'disabled'} • {provider.status}</p>
         </div>
         <StatusPill
           label={provider.status}
@@ -402,6 +420,28 @@ function ProviderTile({
           }
         />
       </div>
+
+      {provider.provider_type === 'external' && (
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleExternal(!provider.enabled);
+            }}
+            disabled={isMutating}
+            className={cn(
+              'rounded-xs border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors',
+              provider.enabled
+                ? 'border-monokai-orange/30 bg-monokai-orange/10 text-monokai-orange hover:bg-monokai-orange/15'
+                : 'border-monokai-green/30 bg-monokai-green/10 text-monokai-green hover:bg-monokai-green/15',
+              isMutating && 'cursor-wait opacity-70',
+            )}
+          >
+            {isMutating ? 'Updating…' : provider.enabled ? 'Disable Plugin' : 'Enable Plugin'}
+          </button>
+        </div>
+      )}
 
       {provider.reason && <p className="mt-3 text-xs text-gruv-light-3 whitespace-pre-wrap">{provider.reason}</p>}
 
@@ -444,7 +484,7 @@ function ProviderDetailPanel({
           <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Selected Peripheral</p>
           <h3 className="mt-2 text-base font-semibold text-gruv-light-1">{provider.name}</h3>
           <p className="mt-1 text-xs text-gruv-light-4">
-            {provider.installed_tools.length} installed tool{provider.installed_tools.length === 1 ? '' : 's'} • {(provider.planned_tools?.length ?? 0)} planned
+            {provider.provider_type} • {provider.installed_tools.length} installed tool{provider.installed_tools.length === 1 ? '' : 's'} • {(provider.planned_tools?.length ?? 0)} planned
           </p>
         </div>
         <StatusPill
