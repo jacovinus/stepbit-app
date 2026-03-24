@@ -10,12 +10,13 @@ vi.mock('../api/llm', () => ({
     Promise.resolve([
       {
         name: 'quantlab',
+        provider_type: 'external',
         enabled: true,
         status: 'installed',
         reason: null,
-        capabilities: ['quant-research'],
-        installed_tools: ['quantlab_run'],
-        planned_tools: ['quantlab_sweep'],
+        capabilities: ['quant-research', 'command:run', 'command:sweep'],
+        installed_tools: ['quantlab_run', 'quantlab_sweep', 'quantlab_forward', 'quantlab_portfolio'],
+        planned_tools: [],
       },
     ]),
   ),
@@ -29,10 +30,5 @@ describe('McpTools Page', () => {
     expect(screen.getByText('desc')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open System View' })).toBeInTheDocument();
     expect(screen.getByText('MCP Tool Playground')).toBeInTheDocument();
-    expect(screen.getByText('Planned Tool Surface')).toBeInTheDocument();
-    expect(screen.getByText('quantlab • quantlab_sweep')).toBeInTheDocument();
-    expect(screen.getByText('Planned Tool Details')).toBeInTheDocument();
-    expect(await screen.findAllByText('Provider Guide')).not.toHaveLength(0);
-    expect(await screen.findByText('Planned provider docs.')).toBeInTheDocument();
   });
 });

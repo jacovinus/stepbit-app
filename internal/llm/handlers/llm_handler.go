@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"io"
@@ -39,6 +40,27 @@ func (h *LlmHandler) ListMCPProviders(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(providers)
+}
+
+func (h *LlmHandler) UpdateMCPProviderState(c *fiber.Ctx) error {
+	provider := strings.TrimSpace(c.Params("provider"))
+	if provider == "" || !providerNamePattern.MatchString(provider) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid provider name"})
+	}
+
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	result, err := h.llmService.UpdateMCPProviderState(c.Context(), provider, req.Enabled)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(result)
 }
 
 func (h *LlmHandler) GetMCPProviderDoc(c *fiber.Ctx) error {
@@ -285,6 +307,7 @@ func isAllowedArtifactPath(path string) bool {
 func allowedArtifactRoots() []string {
 	roots := []string{
 		filepath.Join(os.TempDir(), "stepbit-core", "quantlab"),
+		filepath.Join(os.TempDir(), "stepbit-core", "quantlab-external"),
 	}
 
 	if cwd, err := os.Getwd(); err == nil {
@@ -305,27 +328,71 @@ func allowedArtifactRoots() []string {
 }
 
 func resolveProviderDocPath(provider string) (string, error) {
-	candidates := make([]string, 0, 4)
+	candidates := make([]string, 0, 3)
 	if coreRoot := os.Getenv("STEPBIT_CORE_ROOT"); coreRoot != "" {
-		candidates = append(candidates, filepath.Join(coreRoot, "src", "mcp", provider, "README.md"))
+		candidates = append(candidates, coreRoot)
 	}
 
 	if cwd, err := os.Getwd(); err == nil {
 		candidates = append(candidates,
-			filepath.Join(cwd, "stepbit-core", "src", "mcp", provider, "README.md"),
-			filepath.Join(cwd, "..", "stepbit-core", "src", "mcp", provider, "README.md"),
+			filepath.Join(cwd, "stepbit-core"),
+			filepath.Join(cwd, "..", "stepbit-core"),
 		)
 	}
 
-	for _, candidate := range candidates {
-		abs, err := filepath.Abs(candidate)
+	for _, root := range candidates {
+		absRoot, err := filepath.Abs(root)
 		if err != nil {
 			continue
 		}
-		if info, statErr := os.Stat(abs); statErr == nil && !info.IsDir() {
-			return abs, nil
+
+		nativeDoc := filepath.Join(absRoot, "src", "mcp", provider, "README.md")
+		if info, statErr := os.Stat(nativeDoc); statErr == nil && !info.IsDir() {
+			return nativeDoc, nil
+		}
+
+		if externalDoc, ok := resolveExternalProviderDocPath(absRoot, provider); ok {
+			return externalDoc, nil
 		}
 	}
 
 	return "", fmt.Errorf("provider documentation not found for %s", provider)
+}
+
+func resolveExternalProviderDocPath(coreRoot, provider string) (string, bool) {
+	pluginRoot := filepath.Join(coreRoot, "plugins", "installed")
+	entries, err := os.ReadDir(pluginRoot)
+	if err != nil {
+		return "", false
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		pluginDir := filepath.Join(pluginRoot, entry.Name())
+		manifestPath := filepath.Join(pluginDir, "plugin.json")
+		content, err := os.ReadFile(manifestPath)
+		if err != nil {
+			continue
+		}
+
+		var manifest struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(content, &manifest); err != nil {
+			continue
+		}
+		if strings.TrimSpace(strings.ToLower(manifest.Name)) != strings.TrimSpace(strings.ToLower(provider)) {
+			continue
+		}
+
+		readmePath := filepath.Join(pluginDir, "README.md")
+		if info, statErr := os.Stat(readmePath); statErr == nil && !info.IsDir() {
+			return readmePath, true
+		}
+	}
+
+	return "", false
 }

@@ -750,6 +750,48 @@ const buildGuidedDefaults = (tool: McpTool) => {
       run_label: 'Demo ETH baseline',
     };
   }
+  if (tool.name === 'quantlab_sweep') {
+    return {
+      strategy: 'rsi_ma_cross_v2',
+      date_range: JSON.stringify({ start: '2023-01-01', end: '2023-12-31' }, null, 2),
+      features: JSON.stringify({ ticker: 'ETH-USD', interval: '1d', fee: 0.002, initial_cash: 1000 }, null, 2),
+      parameters: JSON.stringify({ cooldown_days: 0 }, null, 2),
+      parameter_sets: JSON.stringify([
+        { label: 'baseline', parameters: { rsi_buy_max: 60, rsi_sell_min: 75 } },
+        { label: 'tighter', parameters: { rsi_buy_max: 58, rsi_sell_min: 74 } },
+      ], null, 2),
+      objective: 'total_return',
+      timeout_seconds: '180',
+      run_label: 'ETH sweep',
+    };
+  }
+  if (tool.name === 'quantlab_forward') {
+    return {
+      strategy: 'rsi_ma_cross_v2',
+      features: JSON.stringify({ ticker: 'ETH-USD', interval: '1d', fee: 0.002, initial_cash: 1000 }, null, 2),
+      parameters: JSON.stringify({ rsi_buy_max: 60, rsi_sell_min: 75 }, null, 2),
+      segments: JSON.stringify([
+        { label: 'train-2023h1', start: '2023-01-01', end: '2023-06-30' },
+        { label: 'eval-2023h2', start: '2023-07-01', end: '2023-12-31' },
+      ], null, 2),
+      timeout_seconds: '180',
+      run_label: 'ETH forward',
+    };
+  }
+  if (tool.name === 'quantlab_portfolio') {
+    return {
+      strategy: 'rsi_ma_cross_v2',
+      date_range: JSON.stringify({ start: '2023-01-01', end: '2023-12-31' }, null, 2),
+      features: JSON.stringify({ interval: '1d', fee: 0.002, initial_cash: 1000 }, null, 2),
+      parameters: JSON.stringify({ rsi_buy_max: 60, rsi_sell_min: 75 }, null, 2),
+      legs: JSON.stringify([
+        { label: 'btc', ticker: 'BTC-USD', weight: 0.6 },
+        { label: 'eth', ticker: 'ETH-USD', weight: 0.4 },
+      ], null, 2),
+      timeout_seconds: '180',
+      run_label: 'Crypto basket',
+    };
+  }
 
   const properties = tool.input_schema?.properties || {};
   const defaults: Record<string, string> = {};
@@ -858,6 +900,54 @@ const buildExamples = (tool: McpTool | null) => {
         },
         timeout_seconds: 180,
         run_label: 'Demo BTC baseline',
+      },
+    ];
+  }
+  if (tool.name === 'quantlab_sweep') {
+    return [
+      {
+        strategy: 'rsi_ma_cross_v2',
+        date_range: { start: '2023-01-01', end: '2023-12-31' },
+        features: { ticker: 'ETH-USD', interval: '1d', fee: 0.002, initial_cash: 1000 },
+        parameters: { cooldown_days: 0 },
+        parameter_sets: [
+          { label: 'baseline', parameters: { rsi_buy_max: 60, rsi_sell_min: 75 } },
+          { label: 'tighter', parameters: { rsi_buy_max: 58, rsi_sell_min: 74 } },
+        ],
+        objective: 'total_return',
+        timeout_seconds: 180,
+        run_label: 'ETH sweep',
+      },
+    ];
+  }
+  if (tool.name === 'quantlab_forward') {
+    return [
+      {
+        strategy: 'rsi_ma_cross_v2',
+        features: { ticker: 'ETH-USD', interval: '1d', fee: 0.002, initial_cash: 1000 },
+        parameters: { rsi_buy_max: 60, rsi_sell_min: 75 },
+        segments: [
+          { label: 'train-2023h1', start: '2023-01-01', end: '2023-06-30' },
+          { label: 'eval-2023h2', start: '2023-07-01', end: '2023-12-31' },
+        ],
+        timeout_seconds: 180,
+        run_label: 'ETH forward',
+      },
+    ];
+  }
+  if (tool.name === 'quantlab_portfolio') {
+    return [
+      {
+        strategy: 'rsi_ma_cross_v2',
+        date_range: { start: '2023-01-01', end: '2023-12-31' },
+        features: { interval: '1d', fee: 0.002, initial_cash: 1000 },
+        parameters: { rsi_buy_max: 60, rsi_sell_min: 75 },
+        legs: [
+          { label: 'btc', ticker: 'BTC-USD', weight: 0.6 },
+          { label: 'eth', ticker: 'ETH-USD', weight: 0.4 },
+        ],
+        timeout_seconds: 180,
+        run_label: 'Crypto basket',
       },
     ];
   }
