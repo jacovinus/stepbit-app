@@ -22,6 +22,10 @@ func (s *LlmService) GetMCPProviders(ctx context.Context) (interface{}, error) {
 	return s.coreClient.GetMCPProviders(ctx)
 }
 
+func (s *LlmService) UpdateMCPProviderState(ctx context.Context, name string, enabled bool) (interface{}, error) {
+	return s.coreClient.UpdateMCPProviderState(ctx, name, enabled)
+}
+
 func (s *LlmService) GetCoreHealthReport(ctx context.Context) (core.CoreHealthReport, error) {
 	return s.coreClient.GetHealthReport(ctx)
 }

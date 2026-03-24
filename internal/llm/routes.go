@@ -32,6 +32,7 @@ func (m *LlmModule) RegisterRoutes(app *fiber.App) {
 	llm := api.Group("/llm")
 	llm.Get("/mcp/tools", m.LlmHandler.ListMCPTools)
 	llm.Get("/mcp/providers", m.LlmHandler.ListMCPProviders)
+	llm.Post("/mcp/providers/:provider/state", m.LlmHandler.UpdateMCPProviderState)
 	llm.Get("/mcp/providers/:provider/doc", m.LlmHandler.GetMCPProviderDoc)
 	llm.Get("/core/health", m.LlmHandler.GetCoreHealthReport)
 	llm.Get("/core/readiness", m.LlmHandler.GetCoreReadinessReport)

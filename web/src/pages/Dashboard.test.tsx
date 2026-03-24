@@ -84,6 +84,7 @@ vi.mock('../api/llm', () => ({
     Promise.resolve([
       {
         name: 'duckdb',
+        provider_type: 'native',
         enabled: true,
         status: 'installed',
         reason: null,
@@ -93,12 +94,13 @@ vi.mock('../api/llm', () => ({
       },
       {
         name: 'quantlab',
+        provider_type: 'external',
         enabled: true,
         status: 'installed',
         reason: null,
-        capabilities: ['quant-research', 'artifact-generation'],
-        installed_tools: ['quantlab_run'],
-        planned_tools: ['quantlab_sweep', 'quantlab_forward', 'quantlab_portfolio'],
+        capabilities: ['quant-research', 'artifact-generation', 'command:run', 'command:sweep', 'command:forward', 'command:portfolio'],
+        installed_tools: ['quantlab_run', 'quantlab_sweep', 'quantlab_forward', 'quantlab_portfolio'],
+        planned_tools: [],
       },
     ]),
   ),
@@ -149,8 +151,8 @@ describe('Dashboard Page', () => {
     expect(await screen.findByText('Control Plane')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Open System View' })).toBeInTheDocument();
     expect(await screen.findByText('quantlab')).toBeInTheDocument();
-    expect(await screen.findByText('3 planned')).toBeInTheDocument();
     expect(await screen.findByText('quantlab_sweep')).toBeInTheDocument();
+    expect(await screen.findByText('0 planned')).toBeInTheDocument();
     expect(screen.getByText('Latest Failure')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open Execution History' })).toBeInTheDocument();
   });

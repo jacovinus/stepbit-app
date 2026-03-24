@@ -315,6 +315,28 @@ func (c *StepbitCoreClient) GetMCPProviders(ctx context.Context) ([]map[string]i
 	return result.Providers, nil
 }
 
+func (c *StepbitCoreClient) UpdateMCPProviderState(ctx context.Context, name string, enabled bool) (map[string]interface{}, error) {
+	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodPost, fmt.Sprintf("/v1/mcp/providers/%s/state", name), map[string]interface{}{
+		"enabled": enabled,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("mcp provider state update failed (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // ExecuteReasoning executes a reasoning graph synchronously
 func (c *StepbitCoreClient) ExecuteReasoning(ctx context.Context, graph interface{}) (map[string]interface{}, error) {
 	// Try the current core path first.
