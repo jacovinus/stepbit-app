@@ -141,6 +141,25 @@ func TestStepbitCoreClient_ChatStreamingWithToolCalls_ExtractsToolCalls(t *testi
 	}
 }
 
+func TestStepbitCoreClient_CancelChat(t *testing.T) {
+	var requestedPath string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPath = r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client := NewStepbitCoreClient(server.URL, "master-key", "model-1")
+	if err := client.CancelChat(context.Background(), "session-123"); err != nil {
+		t.Fatalf("CancelChat failed: %v", err)
+	}
+
+	if requestedPath != "/v1/chat/cancel/session-123" {
+		t.Fatalf("unexpected cancel path: %s", requestedPath)
+	}
+}
+
 func TestParseMetricsSummary(t *testing.T) {
 	metrics := `
 # HELP requests_total Total API requests
