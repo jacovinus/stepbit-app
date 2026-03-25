@@ -49,11 +49,12 @@ type UpdateSessionRequest struct {
 
 // WebSocket Models
 type WsClientMessage struct {
-	Type    string `json:"type"`
-	Content string `json:"content"`
-	Stream  *bool  `json:"stream"`
-	Search  *bool  `json:"search"`
-	Reason  *bool  `json:"reason"`
+	Type     string  `json:"type"`
+	Content  string  `json:"content"`
+	Stream   *bool   `json:"stream"`
+	Search   *bool   `json:"search"`
+	Reason   *bool   `json:"reason"`
+	SkillIDs []int64 `json:"skill_ids,omitempty"`
 }
 
 type WsServerMessage struct {

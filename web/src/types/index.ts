@@ -49,6 +49,7 @@ export interface WsClientMessage {
   stream?: boolean;
   search?: boolean;
   reason?: boolean;
+  skill_ids?: number[];
 }
 
 export interface PaginationQuery {

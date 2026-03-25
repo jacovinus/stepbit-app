@@ -251,14 +251,8 @@ export const Chat = () => {
 
     const handleSend = () => {
         if (!input.trim() || isStreaming) return;
-        let finalMessage = input.trim();
-        if (selectedSkills.length > 0) {
-            const skillBlocks = selectedSkills
-                .map(s => `[Skill: ${s.name}]\n${s.content}`)
-                .join('\n\n---\n\n');
-            finalMessage = `${skillBlocks}\n\n---\n\n${finalMessage}`;
-        }
-        sendMessage(finalMessage, searchEnabled, reasoningEnabled);
+        const finalMessage = input.trim();
+        sendMessage(finalMessage, searchEnabled, reasoningEnabled, selectedSkills.map(skill => skill.id));
         setInput('');
         setSelectedSkills([]);
     };
@@ -586,7 +580,7 @@ export const Chat = () => {
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-                                    placeholder={selectedSkills.length > 0 ? `Type your message… (${selectedSkills.length} skill${selectedSkills.length > 1 ? 's' : ''} will be prepended)` : "Type a message..."}
+                                    placeholder={selectedSkills.length > 0 ? `Type your message… (${selectedSkills.length} skill${selectedSkills.length > 1 ? 's' : ''} active as policy)` : "Type a message..."}
                                     className="w-full bg-gruv-dark-3 border border-gruv-dark-4 text-gruv-light-1 rounded-2xl py-4 pl-4 pr-16 focus:outline-none focus:border-monokai-pink transition-colors resize-none h-16 min-h-[64px]"
                                 />
                                 <button
