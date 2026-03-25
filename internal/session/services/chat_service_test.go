@@ -55,7 +55,7 @@ func TestBuildToolSystemPrompt_IncludesDefinitions(t *testing.T) {
 	if prompt == "" {
 		t.Fatal("expected prompt to be populated")
 	}
-	if !containsAll(prompt, "Reason step-by-step", "internet_search", "Search the web.") {
+	if !containsAll(prompt, "Reason step-by-step", "internet_search", "Search the web.", "Do not return JSON Schema fields", "Do not explain the tool call") {
 		t.Fatalf("prompt missing expected instructions: %s", prompt)
 	}
 }

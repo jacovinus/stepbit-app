@@ -45,3 +45,17 @@ func TestExtractStreamingToolCalls_IgnoresIncompleteJSON(t *testing.T) {
 		t.Fatal("expected incomplete JSON to be ignored")
 	}
 }
+
+func TestExtractStreamingToolCalls_NormalizesSchemaLikeArguments(t *testing.T) {
+	text := "I will search.\n[{\"name\":\"internet_search\",\"arguments\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"description\":\"Search query\",\"value\":\"current time and date\"}}}}]"
+	toolCalls, _, ok := ExtractStreamingToolCalls(text)
+	if !ok {
+		t.Fatal("expected tool calls to be extracted")
+	}
+	if len(toolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(toolCalls))
+	}
+	if toolCalls[0].Function.Arguments != "{\"query\":\"current time and date\"}" {
+		t.Fatalf("unexpected normalized arguments: %s", toolCalls[0].Function.Arguments)
+	}
+}
