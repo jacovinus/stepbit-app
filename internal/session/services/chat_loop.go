@@ -111,6 +111,9 @@ func buildToolSystemPrompt(searchEnabled, reasonEnabled bool, definitions []chat
 	if len(definitions) > 0 {
 		builder.WriteString("When a tool is needed, respond with a JSON array of tool calls and nothing else after that array.\n")
 		builder.WriteString("Tool call format: [{\"name\":\"tool_name\",\"arguments\":{...}}]\n")
+		builder.WriteString("The `arguments` object must contain only real values for the tool inputs.\n")
+		builder.WriteString("Do not return JSON Schema fields such as `type`, `properties`, `description`, or `required` inside `arguments`.\n")
+		builder.WriteString("Do not explain the tool call, do not add prose after the JSON array, and do not repeat the raw JSON once the tool result comes back.\n")
 		builder.WriteString("Available tools:\n")
 		for _, definition := range definitions {
 			builder.WriteString(fmt.Sprintf("- %s: %s Parameters: %s\n", definition.Name, definition.Description, definition.Parameters))

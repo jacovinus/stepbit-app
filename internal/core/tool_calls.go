@@ -71,7 +71,8 @@ func ExtractStreamingToolCalls(buffer string) ([]ToolCall, string, bool) {
 						case string:
 							arguments = typed
 						default:
-							if data, err := stdjson.Marshal(typed); err == nil {
+							normalized := normalizeToolArguments(typed)
+							if data, err := stdjson.Marshal(normalized); err == nil {
 								arguments = string(data)
 							}
 						}
@@ -105,4 +106,49 @@ func ExtractStreamingToolCalls(buffer string) ([]ToolCall, string, bool) {
 
 		searchStart = absoluteStart + 1
 	}
+}
+
+func normalizeToolArguments(input any) any {
+	switch typed := input.(type) {
+	case map[string]any:
+		if looksLikeSchemaArguments(typed) {
+			properties, _ := typed["properties"].(map[string]any)
+			normalized := make(map[string]any, len(properties))
+			for key, rawProperty := range properties {
+				if propertyMap, ok := rawProperty.(map[string]any); ok {
+					if value, exists := propertyMap["value"]; exists {
+						normalized[key] = normalizeToolArguments(value)
+						continue
+					}
+					if value, exists := propertyMap["default"]; exists {
+						normalized[key] = normalizeToolArguments(value)
+						continue
+					}
+				}
+			}
+			if len(normalized) > 0 {
+				return normalized
+			}
+		}
+
+		normalized := make(map[string]any, len(typed))
+		for key, value := range typed {
+			normalized[key] = normalizeToolArguments(value)
+		}
+		return normalized
+	case []any:
+		normalized := make([]any, 0, len(typed))
+		for _, value := range typed {
+			normalized = append(normalized, normalizeToolArguments(value))
+		}
+		return normalized
+	default:
+		return input
+	}
+}
+
+func looksLikeSchemaArguments(input map[string]any) bool {
+	_, hasType := input["type"]
+	_, hasProperties := input["properties"]
+	return hasType && hasProperties
 }
