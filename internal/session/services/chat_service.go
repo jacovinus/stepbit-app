@@ -9,6 +9,7 @@ import (
 	"stepbit-app/internal/core"
 	"stepbit-app/internal/session/models"
 	"strings"
+	"time"
 
 	"github.com/gofiber/websocket/v2"
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ type ChatService struct {
 	configService  *services.ConfigService
 	config         *configModels.AppConfig
 	toolRegistry   *chattools.Registry
+	activeRuns     *activeRunRegistry
 }
 
 func NewChatService(coreClient streamingChatClient, sessionService *SessionService, configService *services.ConfigService, config *configModels.AppConfig) *ChatService {
@@ -29,13 +31,62 @@ func NewChatService(coreClient streamingChatClient, sessionService *SessionServi
 		configService:  configService,
 		config:         config,
 		toolRegistry:   chattools.NewRegistry(),
+		activeRuns:     newActiveRunRegistry(),
 	}
 }
 
+func (s *ChatService) StartWsChatMessage(parentCtx context.Context, write wsWriteFunc, sessionID uuid.UUID, msg models.WsClientMessage) {
+	ctx, cancel := context.WithCancel(parentCtx)
+	run := &activeChatRun{
+		cancel: cancel,
+		done:   make(chan struct{}),
+	}
+
+	if previous := s.activeRuns.set(sessionID.String(), run); previous != nil {
+		previous.cancel()
+		select {
+		case <-previous.done:
+		case <-time.After(2 * time.Second):
+		}
+	}
+
+	go func() {
+		defer close(run.done)
+		defer s.activeRuns.clear(sessionID.String(), run)
+		s.handleWsChatMessage(ctx, write, sessionID, msg)
+	}()
+}
+
+func (s *ChatService) CancelActiveRun(ctx context.Context, sessionID uuid.UUID) bool {
+	run := s.activeRuns.remove(sessionID.String())
+	if run == nil {
+		return false
+	}
+
+	run.cancel()
+	if err := s.coreClient.CancelChat(ctx, sessionID.String()); err != nil {
+		log.Printf("[WS-Chat] CancelChat upstream request failed for session=%s: %v", sessionID, err)
+	}
+
+	select {
+	case <-run.done:
+	case <-time.After(3 * time.Second):
+		log.Printf("[WS-Chat] Timed out waiting for session=%s to cancel", sessionID)
+	}
+
+	return true
+}
+
 func (s *ChatService) HandleWsChatMessage(ctx context.Context, c *websocket.Conn, sessionID uuid.UUID, msg models.WsClientMessage) {
+	s.handleWsChatMessage(ctx, func(message models.WsServerMessage) {
+		_ = c.WriteJSON(message)
+	}, sessionID, msg)
+}
+
+func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc, sessionID uuid.UUID, msg models.WsClientMessage) {
 	log.Printf("[WS-Chat] Starting chat for session=%s content='%s'", sessionID, msg.Content)
 	// 1. Initial Status
-	c.WriteJSON(models.WsServerMessage{Type: "status", Content: "Thinking..."})
+	write(models.WsServerMessage{Type: "status", Content: "Thinking..."})
 
 	// 2. Persist User Message
 	s.sessionService.InsertMessage(&models.Message{
@@ -105,18 +156,18 @@ func (s *ChatService) HandleWsChatMessage(ctx context.Context, c *websocket.Conn
 		for streamMsg := range tokenChan {
 			switch streamMsg.Type {
 			case "thinking":
-				c.WriteJSON(models.WsServerMessage{Type: "status", Content: streamMsg.Content})
+				write(models.WsServerMessage{Type: "status", Content: streamMsg.Content})
 			case "trace":
-				c.WriteJSON(models.WsServerMessage{Type: "trace", Content: streamMsg.Content})
+				write(models.WsServerMessage{Type: "trace", Content: streamMsg.Content})
 			case "status":
-				c.WriteJSON(models.WsServerMessage{Type: "status", Content: streamMsg.Content})
+				write(models.WsServerMessage{Type: "status", Content: streamMsg.Content})
 			case "chunk":
 				turnContent.WriteString(streamMsg.Content)
-				c.WriteJSON(models.WsServerMessage{Type: "chunk", Content: streamMsg.Content})
+				write(models.WsServerMessage{Type: "chunk", Content: streamMsg.Content})
 			default:
 				if streamMsg.Content != "" {
 					turnContent.WriteString(streamMsg.Content)
-					c.WriteJSON(models.WsServerMessage{Type: "chunk", Content: streamMsg.Content})
+					write(models.WsServerMessage{Type: "chunk", Content: streamMsg.Content})
 				}
 			}
 		}
@@ -125,7 +176,7 @@ func (s *ChatService) HandleWsChatMessage(ctx context.Context, c *websocket.Conn
 		if err != nil {
 			log.Printf("[WS-Chat] ChatStreaming error: %v", err)
 			if ctx.Err() == nil {
-				c.WriteJSON(models.WsServerMessage{Type: "error", Content: err.Error()})
+				write(models.WsServerMessage{Type: "error", Content: err.Error()})
 			}
 			return
 		}
@@ -155,12 +206,12 @@ func (s *ChatService) HandleWsChatMessage(ctx context.Context, c *websocket.Conn
 		})
 
 		if !ok || len(toolCalls) == 0 {
-			c.WriteJSON(models.WsServerMessage{Type: "done", Content: ""})
+			write(models.WsServerMessage{Type: "done", Content: ""})
 			return
 		}
 
 		for _, toolCall := range toolCalls {
-			c.WriteJSON(models.WsServerMessage{Type: "status", Content: "Running tool: " + toolCall.Function.Name + "..."})
+			write(models.WsServerMessage{Type: "status", Content: "Running tool: " + toolCall.Function.Name + "..."})
 
 			result, callErr := s.toolRegistry.CallTool(ctx, toolCall, sessionID, store)
 			if callErr != nil {
@@ -192,5 +243,5 @@ func (s *ChatService) HandleWsChatMessage(ctx context.Context, c *websocket.Conn
 		errChan = make(chan error, 1)
 	}
 
-	c.WriteJSON(models.WsServerMessage{Type: "error", Content: "Maximum tool-call loops reached"})
+	write(models.WsServerMessage{Type: "error", Content: "Maximum tool-call loops reached"})
 }
