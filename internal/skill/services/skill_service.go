@@ -1,20 +1,30 @@
 package services
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
+	"html"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"stepbit-app/internal/skill/models"
 	"strings"
 )
 
 type SkillService struct {
-	db *sql.DB
+	db         *sql.DB
+	httpClient *http.Client
 }
 
 func NewSkillService(db *sql.DB) *SkillService {
-	return &SkillService{db: db}
+	return &SkillService{
+		db:         db,
+		httpClient: &http.Client{},
+	}
 }
 
 func (s *SkillService) InsertSkill(skill *models.Skill) (int64, error) {
@@ -88,6 +98,57 @@ func (s *SkillService) DeleteSkill(id int64) error {
 	return err
 }
 
+func (s *SkillService) FetchSkillFromURL(ctx context.Context, req models.FetchURLRequest) (*models.Skill, error) {
+	targetURL := strings.TrimSpace(req.URL)
+	name := strings.TrimSpace(req.Name)
+	if targetURL == "" {
+		return nil, fmt.Errorf("url is required")
+	}
+	if name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("User-Agent", "stepbit-app/1.0")
+
+	resp, err := s.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("fetch failed with status %d", resp.StatusCode)
+	}
+
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	content := string(rawBody)
+	contentType := resp.Header.Get("Content-Type")
+	if strings.Contains(strings.ToLower(contentType), "text/html") {
+		content = stripHTMLTags(content)
+	}
+
+	sourceURL := targetURL
+	id, err := s.InsertSkill(&models.Skill{
+		Name:      name,
+		Content:   content,
+		Tags:      req.Tags,
+		SourceURL: &sourceURL,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return s.GetSkill(id)
+}
+
 func (s *SkillService) PreloadSkills(dir string) error {
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -126,4 +187,13 @@ func (s *SkillService) PreloadSkills(dir string) error {
 		}
 	}
 	return nil
+}
+
+func stripHTMLTags(input string) string {
+	tagRe := regexp.MustCompile(`(?s)<[^>]+>`)
+	wsRe := regexp.MustCompile(`\s+`)
+	output := tagRe.ReplaceAllString(input, " ")
+	output = html.UnescapeString(output)
+	output = wsRe.ReplaceAllString(output, " ")
+	return strings.TrimSpace(output)
 }
