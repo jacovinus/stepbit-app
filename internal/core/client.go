@@ -185,6 +185,12 @@ func (c *StepbitCoreClient) ChatStreamingWithToolCalls(ctx context.Context, mess
 		"messages": messages,
 		"stream":   true,
 	}
+	if options.Search {
+		body["search"] = true
+	}
+	if options.Reason {
+		body["reason"] = true
+	}
 	if options.Temperature > 0 {
 		body["temperature"] = options.Temperature
 	}
