@@ -5,10 +5,11 @@ import (
 	"log"
 	"stepbit-app/internal/session/models"
 	"stepbit-app/internal/session/services"
-	
-	"github.com/google/uuid"
+	"sync"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
+	"github.com/google/uuid"
 )
 
 type ChatHandler struct {
@@ -30,6 +31,13 @@ func (h *ChatHandler) HandleWebSocket(c *websocket.Conn) {
 	}
 
 	defer c.Close()
+	defer h.chatService.CancelActiveRun(context.Background(), sessionID)
+	var writeMu sync.Mutex
+	writeJSON := func(message models.WsServerMessage) {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		_ = c.WriteJSON(message)
+	}
 
 	for {
 		var msg models.WsClientMessage
@@ -41,12 +49,15 @@ func (h *ChatHandler) HandleWebSocket(c *websocket.Conn) {
 		}
 
 		if msg.Type == "message" {
-			h.chatService.HandleWsChatMessage(context.Background(), c, sessionID, msg)
+			h.chatService.StartWsChatMessage(context.Background(), writeJSON, sessionID, msg)
 		} else if msg.Type == "cancel" {
-			// For now, we logging. Real cancellation requires tracking context per session.
 			log.Printf("[WS] Cancel request received for session %s", sessionID)
+			if h.chatService.CancelActiveRun(context.Background(), sessionID) {
+				writeJSON(models.WsServerMessage{Type: "status", Content: "Process cancelled"})
+				writeJSON(models.WsServerMessage{Type: "done", Content: ""})
+			}
 		} else {
-			c.WriteJSON(models.WsServerMessage{Type: "error", Content: "Unknown message type: " + msg.Type})
+			writeJSON(models.WsServerMessage{Type: "error", Content: "Unknown message type: " + msg.Type})
 		}
 	}
 }
