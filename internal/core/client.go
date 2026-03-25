@@ -163,6 +163,12 @@ func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Messag
 		"messages": messages,
 		"stream":   true,
 	}
+	if options.Search {
+		body["search"] = true
+	}
+	if options.Reason {
+		body["reason"] = true
+	}
 	if options.Temperature > 0 {
 		body["temperature"] = options.Temperature
 	}
