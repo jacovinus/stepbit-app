@@ -146,6 +146,8 @@ type ChatRequest struct {
 	Stream      bool           `json:"stream"`
 	Temperature float64        `json:"temperature"`
 	MaxTokens   int            `json:"max_tokens"`
+	Search      bool           `json:"search"`
+	Reason      bool           `json:"reason"`
 }
 
 func (r *Router) handleChatCompletions(c *fiber.Ctx) error {
@@ -189,6 +191,8 @@ func (r *Router) handleChatCompletions(c *fiber.Ctx) error {
 					Model:       req.Model,
 					Temperature: req.Temperature,
 					MaxTokens:   req.MaxTokens,
+					Search:      req.Search,
+					Reason:      req.Reason,
 				}, tokenChan)
 				if err != nil {
 					fmt.Fprintf(w, "data: {\"error\": \"%v\"}\n\n", err)

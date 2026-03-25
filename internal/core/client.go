@@ -25,10 +25,25 @@ type Message struct {
 	Content string `json:"content"`
 }
 
+type FunctionCall struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
+type ToolCall struct {
+	ID       *string      `json:"id,omitempty"`
+	Type     string       `json:"type,omitempty"`
+	Function FunctionCall `json:"function"`
+}
+
 // StreamMessage represents a chunk of data from the stream
 type StreamMessage struct {
 	Type    string // "chunk" or "thinking"
 	Content string
+}
+
+type ChatStreamResult struct {
+	ToolCalls []ToolCall
 }
 
 // ChatOptions represents options for the chat request
@@ -154,6 +169,13 @@ func (c *StepbitCoreClient) updateToken(resp *http.Response) {
 
 // ChatStreaming handles a streaming chat request
 func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Message, options ChatOptions, tokenChan chan<- StreamMessage) error {
+	_, err := c.ChatStreamingWithToolCalls(ctx, messages, options, tokenChan)
+	return err
+}
+
+// ChatStreamingWithToolCalls handles a streaming chat request and extracts any tool calls
+// embedded in the generated assistant text.
+func (c *StepbitCoreClient) ChatStreamingWithToolCalls(ctx context.Context, messages []Message, options ChatOptions, tokenChan chan<- StreamMessage) (ChatStreamResult, error) {
 	if options.Model == "" {
 		options.Model = c.DefaultModel
 	}
@@ -178,14 +200,15 @@ func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Messag
 
 	resp, err := c.DoAuthenticatedRequestWithURL(ctx, http.MethodPost, url, body)
 	if err != nil {
-		return err
+		return ChatStreamResult{}, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return ChatStreamResult{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
+	var contentBuffer strings.Builder
 	reader := bufio.NewReader(resp.Body)
 	for {
 		line, err := reader.ReadString('\n')
@@ -218,16 +241,17 @@ func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Messag
 							select {
 							case tokenChan <- StreamMessage{Type: "thinking", Content: reasoning}:
 							case <-ctx.Done():
-								return ctx.Err()
+								return ChatStreamResult{}, ctx.Err()
 							}
 						}
 
 						// 2. Handle Standard Content
 						if content, ok := delta["content"].(string); ok && content != "" {
+							contentBuffer.WriteString(content)
 							select {
 							case tokenChan <- StreamMessage{Type: "chunk", Content: content}:
 							case <-ctx.Done():
-								return ctx.Err()
+								return ChatStreamResult{}, ctx.Err()
 							}
 						}
 					}
@@ -236,7 +260,12 @@ func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Messag
 		}
 	}
 
-	return nil
+	result := ChatStreamResult{}
+	if toolCalls, _, ok := ExtractStreamingToolCalls(contentBuffer.String()); ok {
+		result.ToolCalls = toolCalls
+	}
+
+	return result, nil
 }
 
 // ChatCompletion aggregates a non-streaming response using the chat streaming API.
