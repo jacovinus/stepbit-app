@@ -24,6 +24,10 @@ type fakeStreamingChatClient struct {
 	blockOnStream     bool
 }
 
+func (f *fakeStreamingChatClient) ChatStreamingStructured(ctx context.Context, messages []core.Message, options core.ChatOptions, tokenChan chan<- core.StreamMessage) (core.ChatStreamResult, error) {
+	return core.ChatStreamResult{}, core.ErrStructuredResponsesUnavailable
+}
+
 func (f *fakeStreamingChatClient) ChatStreamingWithToolCalls(ctx context.Context, messages []core.Message, options core.ChatOptions, tokenChan chan<- core.StreamMessage) (core.ChatStreamResult, error) {
 	_ = messages
 	_ = options
