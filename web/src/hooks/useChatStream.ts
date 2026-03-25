@@ -105,7 +105,7 @@ export const useChatStream = (sessionId: string | null) => {
     };
   }, [sessionId]);
 
-  const sendMessage = useCallback((content: string, search: boolean = false, reason: boolean = false) => {
+  const sendMessage = useCallback((content: string, search: boolean = false, reason: boolean = false, skillIds: number[] = []) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       setError('Not connected');
       return;
@@ -119,7 +119,8 @@ export const useChatStream = (sessionId: string | null) => {
       content,
       stream: true,
       search,
-      reason
+      reason,
+      skill_ids: skillIds
     };
 
     // Optimistically add user message

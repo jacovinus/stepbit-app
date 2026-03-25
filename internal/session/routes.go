@@ -2,11 +2,12 @@ package session
 
 import (
 	"database/sql"
-	"stepbit-app/internal/core"
 	configModels "stepbit-app/internal/config/models"
 	configServices "stepbit-app/internal/config/services"
+	"stepbit-app/internal/core"
 	"stepbit-app/internal/session/handlers"
 	"stepbit-app/internal/session/services"
+	skillServices "stepbit-app/internal/skill/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
@@ -21,7 +22,8 @@ type SessionModule struct {
 
 func NewSessionModule(db *sql.DB, coreClient *core.StepbitCoreClient, configService *configServices.ConfigService, appConfig *configModels.AppConfig) *SessionModule {
 	sessionService := services.NewSessionService(db)
-	chatService := services.NewChatService(coreClient, sessionService, configService, appConfig)
+	skillService := skillServices.NewSkillService(db)
+	chatService := services.NewChatService(coreClient, sessionService, skillService, configService, appConfig)
 	sessionHandler := handlers.NewSessionHandler(sessionService)
 	chatHandler := handlers.NewChatHandler(chatService)
 
@@ -35,7 +37,7 @@ func NewSessionModule(db *sql.DB, coreClient *core.StepbitCoreClient, configServ
 
 func (m *SessionModule) RegisterRoutes(app *fiber.App) {
 	api := app.Group("/api/sessions")
-	
+
 	api.Get("/stats", m.SessionHandler.GetStats)
 	api.Post("/import", m.SessionHandler.ImportSession)
 	api.Post("/purge", m.SessionHandler.PurgeChat)

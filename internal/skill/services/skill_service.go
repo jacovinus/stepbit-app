@@ -64,6 +64,21 @@ func (s *SkillService) GetSkill(id int64) (*models.Skill, error) {
 	return &sk, nil
 }
 
+func (s *SkillService) GetSkillsByIDs(ids []int64) ([]models.Skill, error) {
+	skills := make([]models.Skill, 0, len(ids))
+	for _, id := range ids {
+		skill, err := s.GetSkill(id)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				continue
+			}
+			return nil, err
+		}
+		skills = append(skills, *skill)
+	}
+	return skills, nil
+}
+
 func (s *SkillService) UpdateSkill(id int64, name *string, content *string, tags *string, sourceURL *string) error {
 	var query strings.Builder
 	query.WriteString("UPDATE skills SET updated_at = CURRENT_TIMESTAMP")

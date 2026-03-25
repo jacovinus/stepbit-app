@@ -13,6 +13,7 @@ import (
 	configServices "stepbit-app/internal/config/services"
 	"stepbit-app/internal/core"
 	"stepbit-app/internal/session/models"
+	skillModels "stepbit-app/internal/skill/models"
 	"stepbit-app/internal/storage/duckdb"
 
 	"github.com/google/uuid"
@@ -61,6 +62,32 @@ func TestBuildToolSystemPrompt_IncludesDefinitions(t *testing.T) {
 	}
 	if !containsAll(prompt, "Reason step-by-step", "internet_search", "Search the web.", "Do not return JSON Schema fields", "Do not explain the tool call") {
 		t.Fatalf("prompt missing expected instructions: %s", prompt)
+	}
+}
+
+func TestBuildSkillPolicyPrompt_ReducesRawSkillInstructionsToPolicy(t *testing.T) {
+	prompt := buildSkillPolicyPrompt([]skillModels.Skill{
+		{
+			Name: "Web Researcher",
+			Content: `---
+description: Web Researcher
+---
+
+You have access to the internet_search and read_url tools.
+Use Tables whenever presenting comparisons.
+Cite sources.
+Be concise.`,
+		},
+	})
+
+	if prompt == "" {
+		t.Fatal("expected skill policy prompt")
+	}
+	if !containsAll(prompt, "Web Researcher", "Allowed tools: internet_search, read_url.", "Cite sources", "Use Markdown tables", "Keep the final answer concise") {
+		t.Fatalf("policy prompt missing expected guidance: %s", prompt)
+	}
+	if strings.Contains(prompt, "When you call a tool") {
+		t.Fatalf("policy prompt should not include raw procedural skill instructions: %s", prompt)
 	}
 }
 
@@ -129,7 +156,7 @@ func TestChatService_CancelActiveRun(t *testing.T) {
 	configService := configServices.NewConfigService(core.NewStepbitCoreClient("http://localhost:1", "test-key", "model-1"), &configModels.AppConfig{})
 	configService.SetActiveModel("model-1")
 
-	chatService := NewChatService(client, sessionService, configService, &configModels.AppConfig{})
+	chatService := NewChatService(client, sessionService, nil, configService, &configModels.AppConfig{})
 	writes := make(chan models.WsServerMessage, 4)
 
 	chatService.StartWsChatMessage(context.Background(), func(message models.WsServerMessage) {

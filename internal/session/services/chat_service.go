@@ -9,6 +9,7 @@ import (
 	"stepbit-app/internal/config/services"
 	"stepbit-app/internal/core"
 	"stepbit-app/internal/session/models"
+	skillServices "stepbit-app/internal/skill/services"
 	"strings"
 	"time"
 
@@ -19,16 +20,18 @@ import (
 type ChatService struct {
 	coreClient     streamingChatClient
 	sessionService *SessionService
+	skillService   *skillServices.SkillService
 	configService  *services.ConfigService
 	config         *configModels.AppConfig
 	toolRegistry   *chattools.Registry
 	activeRuns     *activeRunRegistry
 }
 
-func NewChatService(coreClient streamingChatClient, sessionService *SessionService, configService *services.ConfigService, config *configModels.AppConfig) *ChatService {
+func NewChatService(coreClient streamingChatClient, sessionService *SessionService, skillService *skillServices.SkillService, configService *services.ConfigService, config *configModels.AppConfig) *ChatService {
 	return &ChatService{
 		coreClient:     coreClient,
 		sessionService: sessionService,
+		skillService:   skillService,
 		configService:  configService,
 		config:         config,
 		toolRegistry:   chattools.NewRegistry(),
@@ -105,6 +108,13 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 			Role:    h.Role,
 			Content: h.Content,
 		})
+	}
+
+	if skillPrompt := s.buildSelectedSkillsPrompt(msg.SkillIDs); skillPrompt != "" {
+		llmMsgs = append([]core.Message{{
+			Role:    "system",
+			Content: skillPrompt,
+		}}, llmMsgs...)
 	}
 
 	// 4. Call Core for Streaming
@@ -275,4 +285,20 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 	}
 
 	write(models.WsServerMessage{Type: "error", Content: "Maximum tool-call loops reached"})
+}
+
+func (s *ChatService) buildSelectedSkillsPrompt(skillIDs []int64) string {
+	if len(skillIDs) == 0 || s.skillService == nil {
+		return ""
+	}
+
+	skills, err := s.skillService.GetSkillsByIDs(skillIDs)
+	if err != nil || len(skills) == 0 {
+		if err != nil {
+			log.Printf("[WS-Chat] Failed to load selected skills: %v", err)
+		}
+		return ""
+	}
+
+	return buildSkillPolicyPrompt(skills)
 }
