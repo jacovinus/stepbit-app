@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -72,6 +73,45 @@ func TestStepbitCoreClient_ChatStreaming(t *testing.T) {
 
 	if result != "Hello world" {
 		t.Errorf("Expected 'Hello world', got '%s'", result)
+	}
+}
+
+func TestStepbitCoreClient_ChatStreaming_CurrentlyDropsSearchAndReasonFlags(t *testing.T) {
+	var requestBody map[string]any
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("failed to decode request body: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	client := NewStepbitCoreClient(server.URL, "master-key", "model-1")
+	tokenChan := make(chan StreamMessage, 1)
+
+	err := client.ChatStreaming(context.Background(), []Message{{Role: "user", Content: "search this"}}, ChatOptions{
+		Model:  "model-1",
+		Search: true,
+		Reason: true,
+	}, tokenChan)
+	if err != nil {
+		t.Fatalf("ChatStreaming failed: %v", err)
+	}
+
+	if got := requestBody["model"]; got != "model-1" {
+		t.Fatalf("expected model-1 in request body, got %#v", got)
+	}
+
+	if _, ok := requestBody["search"]; ok {
+		t.Fatalf("characterization failure: search flag is now being forwarded; update this test in Stage 1")
+	}
+
+	if _, ok := requestBody["reason"]; ok {
+		t.Fatalf("characterization failure: reason flag is now being forwarded; update this test in Stage 1")
 	}
 }
 

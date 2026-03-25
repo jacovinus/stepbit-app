@@ -2,6 +2,8 @@
 
 This document captures the main `stepbit-core` capabilities that are not yet fully surfaced in `stepbit-app`, along with a practical implementation roadmap.
 
+For Rust-to-Go app parity specifically, see [RUST_PARITY_MATRIX.md](/Users/joelguerra/Projects/ai_tools/stepbit-app/docs/RUST_PARITY_MATRIX.md).
+
 ## Goal
 
 Turn `stepbit-app` from a solid manual workflow UI into a full control plane for the more advanced orchestration, automation, and observability features already developed in `stepbit-core`.
