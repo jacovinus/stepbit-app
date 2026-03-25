@@ -4,6 +4,22 @@ This document captures the main `stepbit-core` capabilities that are not yet ful
 
 For Rust-to-Go app parity specifically, see [RUST_PARITY_MATRIX.md](${AI_TOOLS_ROOT}/stepbit-app/docs/RUST_PARITY_MATRIX.md).
 
+## Rust Chat Parity Status
+
+The highest-priority Rust parity work for the chat surface is now split into three grouped deliveries instead of micro-PRs:
+
+1. Chat parity foundation
+   - closes `#4`, `#5`, and `#6`
+   - forwards `search` and `reason`
+   - restores web research tools
+   - restores the websocket chat tool-call loop
+2. Chat runtime parity
+   - targets `#7`
+   - restores real cancellation semantics and active-run tracking
+3. Residual parity cleanup
+   - targets `#8`
+   - closes `skills/fetch-url` and remaining migration/docs gaps
+
 ## Goal
 
 Turn `stepbit-app` from a solid manual workflow UI into a full control plane for the more advanced orchestration, automation, and observability features already developed in `stepbit-core`.
