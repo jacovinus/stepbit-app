@@ -115,6 +115,32 @@ func TestStepbitCoreClient_ChatStreaming_ForwardsSearchAndReasonFlags(t *testing
 	}
 }
 
+func TestStepbitCoreClient_ChatStreamingWithToolCalls_ExtractsToolCalls(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprintf(w, "data: %s\n\n", `{"choices":[{"delta":{"content":"Looking this up.\n"}}]}`)
+		fmt.Fprintf(w, "data: %s\n\n", `{"choices":[{"delta":{"content":"[{\"name\":\"internet_search\",\"arguments\":{\"query\":\"latest rust\"}}]"}}]}`)
+		fmt.Fprintf(w, "data: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	client := NewStepbitCoreClient(server.URL, "master-key", "model-1")
+	tokenChan := make(chan StreamMessage, 10)
+
+	result, err := client.ChatStreamingWithToolCalls(context.Background(), []Message{{Role: "user", Content: "hi"}}, ChatOptions{}, tokenChan)
+	if err != nil {
+		t.Fatalf("ChatStreamingWithToolCalls failed: %v", err)
+	}
+	close(tokenChan)
+
+	if len(result.ToolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(result.ToolCalls))
+	}
+	if result.ToolCalls[0].Function.Name != "internet_search" {
+		t.Fatalf("expected internet_search, got %q", result.ToolCalls[0].Function.Name)
+	}
+}
+
 func TestParseMetricsSummary(t *testing.T) {
 	metrics := `
 # HELP requests_total Total API requests

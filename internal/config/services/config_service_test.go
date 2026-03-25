@@ -35,17 +35,17 @@ func TestConfigService(t *testing.T) {
 	}
 
 	// 2. Set Active Provider
-	service.SetActiveProvider("ollama")
+	service.SetActiveProvider("stepbit-core")
 	providers := service.ListProviders()
 	found := false
 	for _, p := range providers {
-		if p["id"] == "ollama" && p["active"] == true {
+		if p["id"] == "stepbit-core" && p["active"] == true {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("Ollama provider should be active")
+		t.Error("stepbit-core provider should be active")
 	}
 
 	// 3. Set Active Model
