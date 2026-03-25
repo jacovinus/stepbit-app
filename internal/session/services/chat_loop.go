@@ -13,6 +13,7 @@ import (
 )
 
 type streamingChatClient interface {
+	ChatStreamingStructured(ctx context.Context, messages []core.Message, options core.ChatOptions, tokenChan chan<- core.StreamMessage) (core.ChatStreamResult, error)
 	ChatStreamingWithToolCalls(ctx context.Context, messages []core.Message, options core.ChatOptions, tokenChan chan<- core.StreamMessage) (core.ChatStreamResult, error)
 	CancelChat(ctx context.Context, sessionID string) error
 }
@@ -22,6 +23,14 @@ type wsWriteFunc func(message sessionModels.WsServerMessage)
 type activeChatRun struct {
 	cancel context.CancelFunc
 	done   chan struct{}
+}
+
+type structuredChatResultError struct {
+	result core.ChatStreamResult
+}
+
+func (e structuredChatResultError) Error() string {
+	return "structured chat completed"
 }
 
 type activeRunRegistry struct {
