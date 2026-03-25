@@ -1,6 +1,9 @@
 package services
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"stepbit-app/internal/skill/models"
 	"stepbit-app/internal/storage/duckdb"
@@ -49,7 +52,7 @@ func TestSkillService_CRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateSkill failed: %v", err)
 	}
-	
+
 	updated, _ := service.GetSkill(id)
 	if updated.Content != "# Updated Content" {
 		t.Errorf("Expected updated content, got '%s'", updated.Content)
@@ -106,5 +109,44 @@ func TestSkillService_Preload(t *testing.T) {
 	}
 	if !found {
 		t.Error("Preloaded skill 'hello' not found")
+	}
+}
+
+func TestSkillService_FetchSkillFromURL(t *testing.T) {
+	dbPath := "./test_skill_fetch_url.db"
+	defer os.Remove(dbPath)
+
+	db, err := duckdb.NewConnection(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to connect to duckdb: %v", err)
+	}
+	defer db.Close()
+	duckdb.InitSchema(db)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html><body><h1>Hello</h1><p>Imported skill</p></body></html>"))
+	}))
+	defer server.Close()
+
+	service := NewSkillService(db)
+	skill, err := service.FetchSkillFromURL(context.Background(), models.FetchURLRequest{
+		URL:  server.URL,
+		Name: "Imported Skill",
+		Tags: "imported,test",
+	})
+	if err != nil {
+		t.Fatalf("FetchSkillFromURL failed: %v", err)
+	}
+
+	if skill.Name != "Imported Skill" {
+		t.Fatalf("unexpected skill name: %s", skill.Name)
+	}
+	if skill.SourceURL == nil || *skill.SourceURL != server.URL {
+		t.Fatalf("unexpected source url: %#v", skill.SourceURL)
+	}
+	if skill.Content == "" || skill.Content == "<html><body><h1>Hello</h1><p>Imported skill</p></body></html>" {
+		t.Fatalf("expected cleaned content, got %q", skill.Content)
 	}
 }
