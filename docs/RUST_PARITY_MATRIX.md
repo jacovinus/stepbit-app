@@ -15,9 +15,7 @@ It exists to support issue [#2](https://github.com/jacovinus/stepbit-app/issues/
 
 The main regression is in the primary chat experience:
 
-- the chat UI still exposes `search` and `reason` toggles
-- chat cancellation is still not wired through to an active upstream request
-- `skills/fetch-url` parity is still pending on the Go backend
+- the final remaining parity work is mostly residual cleanup and docs alignment
 
 ## Parity Matrix
 
@@ -33,9 +31,9 @@ The main regression is in the primary chat experience:
 | `read_url` tool | Present | Missing | Gap |
 | `read_full_content` tool | Present | Missing | Gap |
 | Tool result persistence in chat | Present | Missing | Gap |
-| Real chat cancellation | Present | Missing | Gap |
+| Real chat cancellation | Present | Present | Complete |
 | Skills CRUD | Present | Present | Complete |
-| `skills/fetch-url` backend | Present | Frontend expects it, backend parity unclear/missing | Gap |
+| `skills/fetch-url` backend | Present | Present | Complete |
 | Reasoning HTTP/stream | Present | Present | Complete |
 | Pipelines | Present | Present | Complete |
 | Goals flow | More limited | Present and richer | Go-better |
@@ -44,9 +42,8 @@ The main regression is in the primary chat experience:
 
 ## Highest-Priority Gaps
 
-1. Restore real cancellation semantics.
-2. Close residual endpoint/UI parity such as `skills/fetch-url`.
-3. Audit the OpenAI-compatible chat proxy for the same agentic tool behavior if we want parity outside the websocket path.
+1. Audit the OpenAI-compatible chat proxy for the same agentic tool behavior if we want parity outside the websocket path.
+2. Keep parity docs current as the Go app grows features beyond the Rust original.
 
 ## Stage Mapping
 
@@ -55,4 +52,4 @@ The main regression is in the primary chat experience:
 - [#5](https://github.com/jacovinus/stepbit-app/issues/5): Go tool registry + web research tools - done in grouped chat parity PR
 - [#6](https://github.com/jacovinus/stepbit-app/issues/6): websocket chat tool-call loop - done in grouped chat parity PR
 - [#7](https://github.com/jacovinus/stepbit-app/issues/7): cancellation parity
-- [#8](https://github.com/jacovinus/stepbit-app/issues/8): residual parity cleanup and migration docs
+- [#8](https://github.com/jacovinus/stepbit-app/issues/8): residual parity cleanup and migration docs - done in final parity PR

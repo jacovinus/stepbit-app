@@ -20,6 +20,11 @@ The highest-priority Rust parity work for the chat surface is now split into thr
    - targets `#8`
    - closes `skills/fetch-url` and remaining migration/docs gaps
 
+Status update:
+- chat parity foundation is done
+- chat runtime cancellation parity is done
+- residual parity cleanup closes the remaining Rust-era `skills/fetch-url` gap and finalizes the migration notes
+
 ## Goal
 
 Turn `stepbit-app` from a solid manual workflow UI into a full control plane for the more advanced orchestration, automation, and observability features already developed in `stepbit-core`.

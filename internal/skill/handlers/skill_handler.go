@@ -1,9 +1,10 @@
 package handlers
 
 import (
+	"context"
+	"github.com/gofiber/fiber/v2"
 	"stepbit-app/internal/skill/models"
 	"stepbit-app/internal/skill/services"
-	"github.com/gofiber/fiber/v2"
 )
 
 type SkillHandler struct {
@@ -42,7 +43,7 @@ func (h *SkillHandler) CreateSkill(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	
+
 	newSkill, _ := h.skillService.GetSkill(id)
 	return c.Status(fiber.StatusCreated).JSON(newSkill)
 }
@@ -66,7 +67,7 @@ func (h *SkillHandler) UpdateSkill(c *fiber.Ctx) error {
 	if err := h.skillService.UpdateSkill(int64(id), req.Name, req.Content, req.Tags, req.SourceURL); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	
+
 	newSkill, _ := h.skillService.GetSkill(int64(id))
 	return c.JSON(newSkill)
 }
@@ -77,4 +78,18 @@ func (h *SkillHandler) DeleteSkill(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (h *SkillHandler) FetchURL(c *fiber.Ctx) error {
+	var req models.FetchURLRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	skill, err := h.skillService.FetchSkillFromURL(context.Background(), req)
+	if err != nil {
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(skill)
 }
