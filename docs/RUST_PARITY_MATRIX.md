@@ -26,8 +26,8 @@ The main regression is in the primary chat experience:
 | WebSocket chat | Present | Present | Complete |
 | Token streaming | Present | Present | Complete |
 | Chat status messages | Present | Present | Complete |
-| Search toggle in chat | Real effect through tools | Flag exists but no real web-search execution | Gap |
-| Reason toggle in chat | Real effect on chat flow | Flag exists, limited effect | Partial |
+| Search toggle in chat | Real effect through tools | Flag forwarded end-to-end, but still no real web-search execution | Partial |
+| Reason toggle in chat | Real effect on chat flow | Flag forwarded end-to-end, deeper chat behavior still limited | Partial |
 | Tool-call loop in chat | Present | Missing | Gap |
 | `internet_search` tool | Present | Missing | Gap |
 | `read_url` tool | Present | Missing | Gap |
