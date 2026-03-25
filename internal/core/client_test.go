@@ -76,7 +76,7 @@ func TestStepbitCoreClient_ChatStreaming(t *testing.T) {
 	}
 }
 
-func TestStepbitCoreClient_ChatStreaming_CurrentlyDropsSearchAndReasonFlags(t *testing.T) {
+func TestStepbitCoreClient_ChatStreaming_ForwardsSearchAndReasonFlags(t *testing.T) {
 	var requestBody map[string]any
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -106,12 +106,12 @@ func TestStepbitCoreClient_ChatStreaming_CurrentlyDropsSearchAndReasonFlags(t *t
 		t.Fatalf("expected model-1 in request body, got %#v", got)
 	}
 
-	if _, ok := requestBody["search"]; ok {
-		t.Fatalf("characterization failure: search flag is now being forwarded; update this test in Stage 1")
+	if got := requestBody["search"]; got != true {
+		t.Fatalf("expected search=true in request body, got %#v", got)
 	}
 
-	if _, ok := requestBody["reason"]; ok {
-		t.Fatalf("characterization failure: reason flag is now being forwarded; update this test in Stage 1")
+	if got := requestBody["reason"]; got != true {
+		t.Fatalf("expected reason=true in request body, got %#v", got)
 	}
 }
 

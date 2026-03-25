@@ -26,13 +26,13 @@ The main regression is in the primary chat experience:
 | WebSocket chat | Present | Present | Complete |
 | Token streaming | Present | Present | Complete |
 | Chat status messages | Present | Present | Complete |
-| Search toggle in chat | Real effect through tools | Forwarded end-to-end and now drives the chat tool loop | Complete |
-| Reason toggle in chat | Real effect on chat flow | Forwarded end-to-end and reflected in the tool-loop system prompt | Complete |
-| Tool-call loop in chat | Present | Present | Complete |
-| `internet_search` tool | Present | Present | Complete |
-| `read_url` tool | Present | Present | Complete |
-| `read_full_content` tool | Present | Present | Complete |
-| Tool result persistence in chat | Present | Present | Complete |
+| Search toggle in chat | Real effect through tools | Flag forwarded end-to-end, but still no real web-search execution | Partial |
+| Reason toggle in chat | Real effect on chat flow | Flag forwarded end-to-end, deeper chat behavior still limited | Partial |
+| Tool-call loop in chat | Present | Missing | Gap |
+| `internet_search` tool | Present | Missing | Gap |
+| `read_url` tool | Present | Missing | Gap |
+| `read_full_content` tool | Present | Missing | Gap |
+| Tool result persistence in chat | Present | Missing | Gap |
 | Real chat cancellation | Present | Missing | Gap |
 | Skills CRUD | Present | Present | Complete |
 | `skills/fetch-url` backend | Present | Frontend expects it, backend parity unclear/missing | Gap |
