@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime"
 	"stepbit-app/internal/session/models"
-	
+
 	"github.com/goccy/go-json"
 )
 
@@ -34,11 +34,11 @@ func (s *SessionService) GetSession(id string) (*models.Session, error) {
 		"SELECT id, title, created_at, updated_at, CAST(metadata AS VARCHAR) FROM sessions WHERE id = ?",
 		id,
 	).Scan(&session.ID, &session.Title, &session.CreatedAt, &session.UpdatedAt, &metaStr)
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	json.Unmarshal([]byte(metaStr), &session.Metadata)
 	return &session, nil
 }
@@ -132,6 +132,46 @@ func (s *SessionService) GetMessages(sessionID string, limit, offset int) ([]mod
 	return messages, nil
 }
 
+func (s *SessionService) InsertToolResult(result *models.ToolResult) (*models.ToolResult, error) {
+	_, err := s.db.Exec(
+		"INSERT INTO tool_results (session_id, source_url, content) VALUES (?, ?, ?)",
+		result.SessionID, result.SourceURL, result.Content,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	row := s.db.QueryRow(
+		`SELECT id, session_id, source_url, content, created_at
+		 FROM tool_results
+		 WHERE session_id = ?
+		 ORDER BY id DESC
+		 LIMIT 1`,
+		result.SessionID,
+	)
+
+	var inserted models.ToolResult
+	if err := row.Scan(&inserted.ID, &inserted.SessionID, &inserted.SourceURL, &inserted.Content, &inserted.CreatedAt); err != nil {
+		return nil, err
+	}
+
+	return &inserted, nil
+}
+
+func (s *SessionService) GetToolResult(id int64) (*models.ToolResult, error) {
+	row := s.db.QueryRow(
+		"SELECT id, session_id, source_url, content, created_at FROM tool_results WHERE id = ?",
+		id,
+	)
+
+	var result models.ToolResult
+	if err := row.Scan(&result.ID, &result.SessionID, &result.SourceURL, &result.Content, &result.CreatedAt); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 func (s *SessionService) PurgeSessions() error {
 	_, err := s.db.Exec(`
 		DELETE FROM messages;
@@ -183,7 +223,7 @@ func (s *SessionService) GetStats(dbPath string) (map[string]interface{}, error)
 			var tokens int64
 			if err := rows.Scan(&model, &tokens); err == nil {
 				modelUsage = append(modelUsage, map[string]interface{}{
-					"model": model,
+					"model":  model,
 					"tokens": tokens,
 				})
 			}
