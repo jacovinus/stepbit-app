@@ -59,3 +59,37 @@ func TestExtractStreamingToolCalls_NormalizesSchemaLikeArguments(t *testing.T) {
 		t.Fatalf("unexpected normalized arguments: %s", toolCalls[0].Function.Arguments)
 	}
 }
+
+func TestExtractStreamingToolCalls_SupportsStringifiedObjectPayload(t *testing.T) {
+	text := "[\"{\\\"internet_search\\\":{\\\"arguments\\\":{\\\"query\\\":\\\"current date and time\\\"}}}\"]"
+	toolCalls, _, ok := ExtractStreamingToolCalls(text)
+	if !ok {
+		t.Fatal("expected tool calls to be extracted")
+	}
+	if len(toolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(toolCalls))
+	}
+	if toolCalls[0].Function.Name != "internet_search" {
+		t.Fatalf("expected internet_search, got %q", toolCalls[0].Function.Name)
+	}
+	if toolCalls[0].Function.Arguments != "{\"query\":\"current date and time\"}" {
+		t.Fatalf("unexpected arguments: %s", toolCalls[0].Function.Arguments)
+	}
+}
+
+func TestExtractStreamingToolCalls_SupportsToolNameAsObjectKey(t *testing.T) {
+	text := "[{\"internet_search\":{\"arguments\":{\"query\":\"today's date and current time\"}}}]"
+	toolCalls, _, ok := ExtractStreamingToolCalls(text)
+	if !ok {
+		t.Fatal("expected tool calls to be extracted")
+	}
+	if len(toolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(toolCalls))
+	}
+	if toolCalls[0].Function.Name != "internet_search" {
+		t.Fatalf("expected internet_search, got %q", toolCalls[0].Function.Name)
+	}
+	if toolCalls[0].Function.Arguments != "{\"query\":\"today's date and current time\"}" {
+		t.Fatalf("unexpected arguments: %s", toolCalls[0].Function.Arguments)
+	}
+}
