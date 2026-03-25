@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"stepbit-app/internal/chattools"
@@ -13,6 +14,55 @@ import (
 
 type streamingChatClient interface {
 	ChatStreamingWithToolCalls(ctx context.Context, messages []core.Message, options core.ChatOptions, tokenChan chan<- core.StreamMessage) (core.ChatStreamResult, error)
+	CancelChat(ctx context.Context, sessionID string) error
+}
+
+type wsWriteFunc func(message sessionModels.WsServerMessage)
+
+type activeChatRun struct {
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+type activeRunRegistry struct {
+	mu   sync.Mutex
+	runs map[string]*activeChatRun
+}
+
+func newActiveRunRegistry() *activeRunRegistry {
+	return &activeRunRegistry{
+		runs: map[string]*activeChatRun{},
+	}
+}
+
+func (r *activeRunRegistry) set(sessionID string, run *activeChatRun) (previous *activeChatRun) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	previous = r.runs[sessionID]
+	r.runs[sessionID] = run
+	return previous
+}
+
+func (r *activeRunRegistry) get(sessionID string) *activeChatRun {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.runs[sessionID]
+}
+
+func (r *activeRunRegistry) clear(sessionID string, run *activeChatRun) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if current, ok := r.runs[sessionID]; ok && current == run {
+		delete(r.runs, sessionID)
+	}
+}
+
+func (r *activeRunRegistry) remove(sessionID string) *activeChatRun {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	run := r.runs[sessionID]
+	delete(r.runs, sessionID)
+	return run
 }
 
 type toolResultStoreAdapter struct {

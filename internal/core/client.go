@@ -167,6 +167,21 @@ func (c *StepbitCoreClient) updateToken(resp *http.Response) {
 	}
 }
 
+func (c *StepbitCoreClient) CancelChat(ctx context.Context, sessionID string) error {
+	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodDelete, "/v1/chat/cancel/"+sessionID, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("cancel chat failed (%d): %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // ChatStreaming handles a streaming chat request
 func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Message, options ChatOptions, tokenChan chan<- StreamMessage) error {
 	_, err := c.ChatStreamingWithToolCalls(ctx, messages, options, tokenChan)
