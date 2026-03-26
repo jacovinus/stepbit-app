@@ -30,6 +30,12 @@ func TestSkillService_CRUD(t *testing.T) {
 		Name:    "Test Skill",
 		Content: "# Test Content",
 		Tags:    "test,go",
+		Policy: &models.SkillPolicy{
+			Description:      "Code review helper",
+			AllowedTools:     []string{"read_url"},
+			CitationPolicy:   "required",
+			PreferredOutputs: []string{"table", "concise"},
+		},
 	}
 
 	id, err := service.InsertSkill(skill)
@@ -45,10 +51,19 @@ func TestSkillService_CRUD(t *testing.T) {
 	if got.Name != "Test Skill" {
 		t.Errorf("Expected name 'Test Skill', got '%s'", got.Name)
 	}
+	if got.Policy == nil || got.Policy.Description != "Code review helper" {
+		t.Fatalf("expected skill policy to round-trip, got %#v", got.Policy)
+	}
 
 	// 3. Update Skill
 	newContent := "# Updated Content"
-	err = service.UpdateSkill(id, nil, &newContent, nil, nil)
+	newPolicy := &models.SkillPolicy{
+		Description:      "Research helper",
+		AllowedTools:     []string{"internet_search", "read_url"},
+		CitationPolicy:   "required",
+		PreferredOutputs: []string{"table"},
+	}
+	err = service.UpdateSkill(id, nil, &newContent, nil, newPolicy, nil)
 	if err != nil {
 		t.Fatalf("UpdateSkill failed: %v", err)
 	}
@@ -56,6 +71,9 @@ func TestSkillService_CRUD(t *testing.T) {
 	updated, _ := service.GetSkill(id)
 	if updated.Content != "# Updated Content" {
 		t.Errorf("Expected updated content, got '%s'", updated.Content)
+	}
+	if updated.Policy == nil || updated.Policy.Description != "Research helper" {
+		t.Fatalf("expected updated policy, got %#v", updated.Policy)
 	}
 
 	// 4. List Skills
