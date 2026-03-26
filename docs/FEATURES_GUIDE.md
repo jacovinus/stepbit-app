@@ -116,6 +116,16 @@ Scheduled Jobs bring recurring automation to the Stepbit UI by proxying the cron
 ## 8. Event Triggers (Reactive Automation) 🔔
 Triggers allow Stepbit to react to incoming events and launch actions automatically through `stepbit-core`.
 
+## Structured Agent Chat
+
+The chat UI now prefers the structured `/v1/responses` path exposed by `stepbit-core`.
+
+- Tool activity is streamed as explicit status/trace events instead of leaking raw tool JSON into the conversation.
+- If the structured endpoint is unavailable, Stepbit automatically falls back to the legacy parser path.
+- Selected skills are treated as compact policy prompts rather than being prepended verbatim to the user's message.
+
+See [Structured Agent Launch](./STRUCTURED_AGENT_LAUNCH.md) for rollout and rollback guidance.
+
 ### 🎯 Tutorial: Creating your first Trigger
 1. Open the **Triggers** tab.
 2. Enter a **Trigger ID** such as `file-processor`.
