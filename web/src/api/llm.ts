@@ -5,6 +5,12 @@ export interface McpTool {
   name: string;
   description: string;
   input_schema: any;
+  provider_id?: string;
+  enabled?: boolean;
+  read_only?: boolean;
+  destructive?: boolean;
+  open_world?: boolean;
+  tags?: string[];
 }
 
 export const getMcpTools = async (): Promise<McpTool[]> => {
