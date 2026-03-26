@@ -35,6 +35,35 @@ export interface TurnCapabilityContext {
   used_tools: string[];
 }
 
+export interface StructuredCitation {
+  source_id: string;
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
+export interface StructuredArtifact {
+  family: string;
+  title: string;
+  source_tool: string;
+  data: Record<string, any>;
+}
+
+export interface StructuredContentItem {
+  content_type: string;
+  text: string;
+  citation?: StructuredCitation;
+  artifact?: StructuredArtifact;
+}
+
+export interface StructuredOutputItem {
+  id: string;
+  item_type: string;
+  role: string;
+  content: StructuredContentItem[];
+  status: string;
+}
+
 export interface CreateSessionRequest {
   title?: string;
   name?: string;
