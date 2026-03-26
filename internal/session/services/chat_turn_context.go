@@ -13,6 +13,9 @@ func structuredAssistantMetadata(result core.ChatStreamResult) map[string]interf
 	if result.TurnContext != nil {
 		metadata["turn_context"] = result.TurnContext
 	}
+	if len(result.OutputItems) > 0 {
+		metadata["output_items"] = result.OutputItems
+	}
 
 	return metadata
 }

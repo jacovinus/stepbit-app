@@ -152,6 +152,7 @@ func TestStepbitCoreClient_ChatStreamingStructured_ParsesStructuredEvents(t *tes
 		w.Header().Set("Content-Type", "text/event-stream")
 		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.created","data":{"id":"resp-1","turn_context":{"search_enabled":true,"reason_enabled":false,"requested_tools":["internet_search"],"available_tools":[{"name":"internet_search","provider_id":"web","enabled":true,"read_only":true,"open_world":true,"tags":["web"]}],"used_tools":["internet_search"]}}}`)
 		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.tool_call.started","data":{"tool_name":"internet_search"}}`)
+		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.output_item.added","data":{"id":"tool-0-citation-0","item_type":"citation","role":"assistant","content":[{"content_type":"citation","text":"Example Source","citation":{"source_id":"src_1","title":"Example Source","url":"https://example.com/story","snippet":"Example snippet"}}],"status":"completed"}}`)
 		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.output_text.delta","data":{"delta":"Hello"}}`)
 		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.output_text.delta","data":{"delta":" world"}}`)
 		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.completed","data":{"finish_reason":"stop"}}`)
@@ -189,6 +190,9 @@ func TestStepbitCoreClient_ChatStreamingStructured_ParsesStructuredEvents(t *tes
 	}
 	if !result.UsedTools {
 		t.Fatalf("expected tool usage to be detected")
+	}
+	if len(result.OutputItems) != 1 || result.OutputItems[0].ItemType != "citation" {
+		t.Fatalf("unexpected structured output items: %#v", result.OutputItems)
 	}
 	if len(result.ToolEvents) != 1 || result.ToolEvents[0] != "internet_search" {
 		t.Fatalf("unexpected tool events: %#v", result.ToolEvents)
