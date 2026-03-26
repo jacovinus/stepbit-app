@@ -184,11 +184,18 @@ export interface StepbitCoreStatus {
 export interface McpProviderStatus {
   id?: string;
   name: string;
+  title?: string;
+  summary?: string;
   provider_type: 'native' | 'external' | string;
   scope?: string;
   enabled: boolean;
   status: 'installed' | 'disabled' | 'failed' | string;
   reason?: string | null;
+  activation_kind?: string;
+  activation_target?: string | null;
+  activation_key?: string | null;
+  activation_hint?: string;
+  supports_toggle?: boolean;
   capabilities: string[];
   tool_count?: number;
   installed_tools: string[];

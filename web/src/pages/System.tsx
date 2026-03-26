@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, CheckCircle2, Clock3, Cpu, Loader2, PlugZap, ShieldCheck, Siren, Timer } from 'lucide-react';
 import { fetchMcpProviderDoc, getCoreCronStatus, getCoreHealthReport, getCoreReadinessReport, getCoreRecentEvents, getCoreSystemRuntime, getMcpProviders, updateMcpProviderState } from '../api/llm';
 import { pipelinesApi } from '../api/pipelines';
-import type { CoreCheck, CoreRecentEvent, McpProviderStatus, StepbitCoreStatus } from '../types';
+import type { CoreCheck, CoreRecentEvent, StepbitCoreStatus } from '../types';
 import { cn } from '../utils/cn';
-import { MarkdownContent } from '../components/MarkdownContent';
+import { CapabilityInventoryPanel } from '../components/system/CapabilityInventoryPanel';
 
 export function System() {
   const [selectedProviderName, setSelectedProviderName] = useState<string>('');
@@ -266,34 +266,17 @@ export function System() {
       </div>
 
       <div className="glass rounded-xs p-4">
-        <SectionHeader icon={PlugZap} title="Peripheral Inventory" subtitle="Provider-level state exposed by the core MCP manager." />
-        {providersLoading ? (
-          <LoadingPane />
-        ) : !providers?.length ? (
-          <EmptyMessage message="No provider data available." />
-        ) : (
-          <div className="mt-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {providers.map((provider) => (
-              <ProviderTile
-                key={provider.name}
-                provider={provider}
-                selected={selectedProvider?.name === provider.name}
-                onSelect={setSelectedProviderName}
-                isMutating={providerStateMutation.isPending && providerStateMutation.variables?.provider === provider.name}
-                onToggleExternal={(enabled) => providerStateMutation.mutate({ provider: provider.name, enabled })}
-              />
-            ))}
-            </div>
-            {selectedProvider && (
-              <ProviderDetailPanel
-                provider={selectedProvider}
-                providerDoc={selectedProviderDoc}
-                providerDocLoading={selectedProviderDocLoading}
-              />
-            )}
-          </div>
-        )}
+        <SectionHeader icon={PlugZap} title="Connected Capabilities" subtitle="What this AI can use right now, and how each provider is enabled." />
+        <CapabilityInventoryPanel
+          providers={providers}
+          loading={providersLoading}
+          selectedProviderName={selectedProviderName}
+          onSelect={setSelectedProviderName}
+          selectedProviderDoc={selectedProviderDoc}
+          selectedProviderDocLoading={selectedProviderDocLoading}
+          isMutatingFor={(providerName) => providerStateMutation.isPending && providerStateMutation.variables?.provider === providerName}
+          onToggleExternal={(providerName, enabled) => providerStateMutation.mutate({ provider: providerName, enabled })}
+        />
       </div>
     </div>
   );
@@ -373,149 +356,6 @@ function HealthCheckTile({ check }: { check: CoreCheck }) {
           label={check.ok ? 'ok' : 'fail'}
           className={check.ok ? 'border-monokai-green/20 bg-monokai-green/15 text-monokai-green' : 'border-monokai-pink/20 bg-monokai-pink/15 text-monokai-pink'}
         />
-      </div>
-    </div>
-  );
-}
-
-function ProviderTile({
-  provider,
-  selected,
-  onSelect,
-  isMutating,
-  onToggleExternal,
-}: {
-  provider: McpProviderStatus;
-  selected: boolean;
-  onSelect: (name: string) => void;
-  isMutating: boolean;
-  onToggleExternal: (enabled: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(provider.name)}
-      className={cn(
-      'rounded-xs border p-3',
-      provider.status === 'installed'
-        ? 'border-monokai-green/20 bg-monokai-green/5'
-        : provider.status === 'failed'
-          ? 'border-monokai-pink/20 bg-monokai-pink/5'
-          : 'border-white/10 bg-white/5',
-      selected && 'ring-1 ring-monokai-aqua/40',
-    )}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-gruv-light-1">{provider.name}</p>
-          <p className="mt-1 text-[11px] text-gruv-light-4">{provider.provider_type} • {provider.enabled ? 'enabled' : 'disabled'} • {provider.status}</p>
-        </div>
-        <StatusPill
-          label={provider.status}
-          className={
-            provider.status === 'installed'
-              ? 'border-monokai-green/20 bg-monokai-green/15 text-monokai-green'
-              : provider.status === 'failed'
-                ? 'border-monokai-pink/20 bg-monokai-pink/15 text-monokai-pink'
-                : 'border-white/10 bg-white/5 text-gruv-light-3'
-          }
-        />
-      </div>
-
-      {provider.provider_type === 'external' && (
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleExternal(!provider.enabled);
-            }}
-            disabled={isMutating}
-            className={cn(
-              'rounded-xs border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors',
-              provider.enabled
-                ? 'border-monokai-orange/30 bg-monokai-orange/10 text-monokai-orange hover:bg-monokai-orange/15'
-                : 'border-monokai-green/30 bg-monokai-green/10 text-monokai-green hover:bg-monokai-green/15',
-              isMutating && 'cursor-wait opacity-70',
-            )}
-          >
-            {isMutating ? 'Updating…' : provider.enabled ? 'Disable Plugin' : 'Enable Plugin'}
-          </button>
-        </div>
-      )}
-
-      {provider.reason && <p className="mt-3 text-xs text-gruv-light-3 whitespace-pre-wrap">{provider.reason}</p>}
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {provider.capabilities.map((capability) => (
-          <StatusPill key={capability} label={capability} className="border-monokai-aqua/20 bg-monokai-aqua/10 text-monokai-aqua" />
-        ))}
-        {provider.installed_tools.map((tool) => (
-          <StatusPill key={tool} label={tool} className="border-monokai-orange/20 bg-monokai-orange/10 text-monokai-orange" />
-        ))}
-      </div>
-
-      {!!provider.planned_tools?.length && (
-        <div className="mt-3 border-t border-white/10 pt-3">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Planned Tools</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {provider.planned_tools.map((tool) => (
-              <StatusPill key={tool} label={tool} className="border-monokai-purple/20 bg-monokai-purple/10 text-monokai-purple" />
-            ))}
-          </div>
-        </div>
-      )}
-    </button>
-  );
-}
-
-function ProviderDetailPanel({
-  provider,
-  providerDoc,
-  providerDocLoading,
-}: {
-  provider: McpProviderStatus;
-  providerDoc?: string;
-  providerDocLoading: boolean;
-}) {
-  return (
-    <div className="rounded-xs border border-monokai-aqua/20 bg-monokai-aqua/5 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Selected Peripheral</p>
-          <h3 className="mt-2 text-base font-semibold text-gruv-light-1">{provider.name}</h3>
-          <p className="mt-1 text-xs text-gruv-light-4">
-            {provider.provider_type} • {provider.installed_tools.length} installed tool{provider.installed_tools.length === 1 ? '' : 's'} • {(provider.planned_tools?.length ?? 0)} planned
-          </p>
-        </div>
-        <StatusPill
-          label={provider.status}
-          className={
-            provider.status === 'installed'
-              ? 'border-monokai-green/20 bg-monokai-green/15 text-monokai-green'
-              : provider.status === 'failed'
-                ? 'border-monokai-pink/20 bg-monokai-pink/15 text-monokai-pink'
-                : 'border-white/10 bg-white/5 text-gruv-light-3'
-          }
-        />
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-        <ContextRow label="Installed Tools" value={provider.installed_tools.length > 0 ? provider.installed_tools.join(', ') : 'None'} />
-        <ContextRow label="Planned Tools" value={(provider.planned_tools?.length ?? 0) > 0 ? provider.planned_tools!.join(', ') : 'None'} />
-        <ContextRow label="Capabilities" value={provider.capabilities.length > 0 ? provider.capabilities.join(', ') : 'None'} />
-      </div>
-
-      <div className="mt-4 rounded-xs border border-white/10 bg-black/10 p-4">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-gruv-light-4">Provider Guide</p>
-        {providerDocLoading ? (
-          <LoadingPane />
-        ) : providerDoc ? (
-          <div className="mt-3 max-h-[420px] overflow-y-auto pr-2">
-            <MarkdownContent content={providerDoc} />
-          </div>
-        ) : (
-          <EmptyMessage message="No provider guide available." />
-        )}
       </div>
     </div>
   );
