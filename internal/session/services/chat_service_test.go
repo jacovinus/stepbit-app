@@ -113,6 +113,25 @@ Be concise.`,
 	}
 }
 
+func TestBuildSkillPolicyPrompt_PrefersStructuredSkillPolicy(t *testing.T) {
+	prompt := buildSkillPolicyPrompt([]skillModels.Skill{
+		{
+			Name:    "Web Researcher",
+			Content: "Legacy markdown content",
+			Policy: &skillModels.SkillPolicy{
+				Description:      "Live web research specialist",
+				AllowedTools:     []string{"internet_search", "read_url"},
+				CitationPolicy:   "required",
+				PreferredOutputs: []string{"table", "concise"},
+			},
+		},
+	})
+
+	if !containsAll(prompt, "Live web research specialist", "Allowed tools: internet_search, read_url.", "Cite sources", "Use Markdown tables", "Keep the final answer concise") {
+		t.Fatalf("policy prompt missing structured guidance: %s", prompt)
+	}
+}
+
 func TestSessionService_ToolResults(t *testing.T) {
 	dbPath := "./test_tool_results.db"
 	defer os.Remove(dbPath)

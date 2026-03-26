@@ -62,6 +62,26 @@ func extractSkillPolicies(skills []skillModels.Skill) []chatSkillPolicy {
 			PrefersTables:     strings.Contains(lower, "use tables") || strings.Contains(lower, "markdown table"),
 			PrefersConcise:    strings.Contains(lower, "be concise") || strings.Contains(lower, "concise"),
 		}
+		if skill.Policy != nil {
+			if skill.Policy.Description != "" {
+				policy.Description = skill.Policy.Description
+			}
+			if len(skill.Policy.AllowedTools) > 0 {
+				policy.AllowedTools = append([]string(nil), skill.Policy.AllowedTools...)
+			}
+			switch strings.ToLower(skill.Policy.CitationPolicy) {
+			case "required", "tool_required", "always":
+				policy.RequiresCitations = true
+			}
+			for _, output := range skill.Policy.PreferredOutputs {
+				switch strings.ToLower(output) {
+				case "table", "tables":
+					policy.PrefersTables = true
+				case "concise":
+					policy.PrefersConcise = true
+				}
+			}
+		}
 		policies = append(policies, policy)
 	}
 	return policies

@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS skills (
     name       VARCHAR NOT NULL UNIQUE,
     content    TEXT NOT NULL,
     tags       VARCHAR DEFAULT '',
+    policy_json JSON DEFAULT '{}',
     source_url VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

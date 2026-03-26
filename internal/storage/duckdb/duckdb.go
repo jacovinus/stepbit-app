@@ -64,6 +64,7 @@ func InitSchema(db *sql.DB) error {
 		name       VARCHAR NOT NULL UNIQUE,
 		content    TEXT NOT NULL,
 		tags       VARCHAR DEFAULT '',
+		policy_json JSON DEFAULT '{}',
 		source_url VARCHAR,
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -120,6 +121,7 @@ func InitSchema(db *sql.DB) error {
 
 	// Skills
 	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS tags VARCHAR DEFAULT ''")
+	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS policy_json JSON DEFAULT '{}'")
 	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS source_url VARCHAR")
 	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 	db.Exec("ALTER TABLE skills ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
