@@ -36,6 +36,7 @@ func (h *SkillHandler) CreateSkill(c *fiber.Ctx) error {
 		Name:      req.Name,
 		Content:   req.Content,
 		Tags:      req.Tags,
+		Policy:    req.Policy,
 		SourceURL: req.SourceURL,
 	}
 
@@ -64,7 +65,7 @@ func (h *SkillHandler) UpdateSkill(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	if err := h.skillService.UpdateSkill(int64(id), req.Name, req.Content, req.Tags, req.SourceURL); err != nil {
+	if err := h.skillService.UpdateSkill(int64(id), req.Name, req.Content, req.Tags, req.Policy, req.SourceURL); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 

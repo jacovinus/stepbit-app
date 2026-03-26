@@ -28,16 +28,21 @@ func NewSkillService(db *sql.DB) *SkillService {
 }
 
 func (s *SkillService) InsertSkill(skill *models.Skill) (int64, error) {
+	policyJSON, err := encodeSkillPolicy(skill.Policy)
+	if err != nil {
+		return 0, err
+	}
+
 	var id int64
-	err := s.db.QueryRow(
-		"INSERT INTO skills (name, content, tags, source_url) VALUES (?, ?, ?, ?) RETURNING id",
-		skill.Name, skill.Content, skill.Tags, skill.SourceURL,
+	err = s.db.QueryRow(
+		"INSERT INTO skills (name, content, tags, policy_json, source_url) VALUES (?, ?, ?, ?, ?) RETURNING id",
+		skill.Name, skill.Content, skill.Tags, policyJSON, skill.SourceURL,
 	).Scan(&id)
 	return id, err
 }
 
 func (s *SkillService) ListSkills(limit, offset int) ([]models.Skill, error) {
-	rows, err := s.db.Query("SELECT id, name, content, tags, source_url, created_at, updated_at FROM skills LIMIT ? OFFSET ?", limit, offset)
+	rows, err := s.db.Query("SELECT id, name, content, tags, CAST(policy_json AS VARCHAR), source_url, created_at, updated_at FROM skills LIMIT ? OFFSET ?", limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +51,9 @@ func (s *SkillService) ListSkills(limit, offset int) ([]models.Skill, error) {
 	skills := []models.Skill{}
 	for rows.Next() {
 		var sk models.Skill
-		rows.Scan(&sk.ID, &sk.Name, &sk.Content, &sk.Tags, &sk.SourceURL, &sk.CreatedAt, &sk.UpdatedAt)
+		var policyJSON string
+		rows.Scan(&sk.ID, &sk.Name, &sk.Content, &sk.Tags, &policyJSON, &sk.SourceURL, &sk.CreatedAt, &sk.UpdatedAt)
+		sk.Policy = decodeSkillPolicy(policyJSON)
 		skills = append(skills, sk)
 	}
 	return skills, nil
@@ -54,13 +61,15 @@ func (s *SkillService) ListSkills(limit, offset int) ([]models.Skill, error) {
 
 func (s *SkillService) GetSkill(id int64) (*models.Skill, error) {
 	var sk models.Skill
+	var policyJSON string
 	err := s.db.QueryRow(
-		"SELECT id, name, content, tags, source_url, created_at, updated_at FROM skills WHERE id = ?",
+		"SELECT id, name, content, tags, CAST(policy_json AS VARCHAR), source_url, created_at, updated_at FROM skills WHERE id = ?",
 		id,
-	).Scan(&sk.ID, &sk.Name, &sk.Content, &sk.Tags, &sk.SourceURL, &sk.CreatedAt, &sk.UpdatedAt)
+	).Scan(&sk.ID, &sk.Name, &sk.Content, &sk.Tags, &policyJSON, &sk.SourceURL, &sk.CreatedAt, &sk.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	sk.Policy = decodeSkillPolicy(policyJSON)
 	return &sk, nil
 }
 
@@ -79,7 +88,7 @@ func (s *SkillService) GetSkillsByIDs(ids []int64) ([]models.Skill, error) {
 	return skills, nil
 }
 
-func (s *SkillService) UpdateSkill(id int64, name *string, content *string, tags *string, sourceURL *string) error {
+func (s *SkillService) UpdateSkill(id int64, name *string, content *string, tags *string, policy *models.SkillPolicy, sourceURL *string) error {
 	var query strings.Builder
 	query.WriteString("UPDATE skills SET updated_at = CURRENT_TIMESTAMP")
 	args := []interface{}{}
@@ -95,6 +104,14 @@ func (s *SkillService) UpdateSkill(id int64, name *string, content *string, tags
 	if tags != nil {
 		query.WriteString(", tags = ?")
 		args = append(args, *tags)
+	}
+	if policy != nil {
+		policyJSON, err := encodeSkillPolicy(policy)
+		if err != nil {
+			return err
+		}
+		query.WriteString(", policy_json = ?")
+		args = append(args, policyJSON)
 	}
 	if sourceURL != nil {
 		query.WriteString(", source_url = ?")
