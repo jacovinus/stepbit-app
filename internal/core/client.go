@@ -18,6 +18,7 @@ import (
 )
 
 var ErrPlannerEndpointsUnavailable = errors.New("planner endpoints unavailable")
+var ErrStructuredResponsesUnavailable = errors.New("structured responses unavailable")
 
 // Message represents a chat message
 type Message struct {
@@ -43,7 +44,10 @@ type StreamMessage struct {
 }
 
 type ChatStreamResult struct {
-	ToolCalls []ToolCall
+	ToolCalls  []ToolCall
+	Structured bool
+	ToolEvents []string
+	UsedTools  bool
 }
 
 // ChatOptions represents options for the chat request
@@ -186,6 +190,125 @@ func (c *StepbitCoreClient) CancelChat(ctx context.Context, sessionID string) er
 func (c *StepbitCoreClient) ChatStreaming(ctx context.Context, messages []Message, options ChatOptions, tokenChan chan<- StreamMessage) error {
 	_, err := c.ChatStreamingWithToolCalls(ctx, messages, options, tokenChan)
 	return err
+}
+
+// ChatStreamingStructured streams structured response events from /v1/responses.
+func (c *StepbitCoreClient) ChatStreamingStructured(ctx context.Context, messages []Message, options ChatOptions, tokenChan chan<- StreamMessage) (ChatStreamResult, error) {
+	if options.Model == "" {
+		options.Model = c.DefaultModel
+	}
+
+	body := map[string]interface{}{
+		"model":    options.Model,
+		"messages": messages,
+		"stream":   true,
+	}
+	if options.Search {
+		body["search"] = true
+	}
+	if options.Reason {
+		body["reason"] = true
+	}
+	if options.Temperature > 0 {
+		body["temperature"] = options.Temperature
+	}
+	if options.MaxTokens > 0 {
+		body["max_output_tokens"] = options.MaxTokens
+	}
+
+	baseURL := c.BaseURL
+	if options.BaseURL != "" {
+		baseURL = options.BaseURL
+	}
+	url := baseURL + "/v1/responses"
+
+	resp, err := c.DoAuthenticatedRequestWithURL(ctx, http.MethodPost, url, body)
+	if err != nil {
+		return ChatStreamResult{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound ||
+			resp.StatusCode == http.StatusMethodNotAllowed ||
+			resp.StatusCode == http.StatusNotImplemented ||
+			resp.StatusCode == http.StatusServiceUnavailable {
+			return ChatStreamResult{}, ErrStructuredResponsesUnavailable
+		}
+		return ChatStreamResult{}, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	var (
+		result        ChatStreamResult
+		contentBuffer strings.Builder
+	)
+	result.Structured = true
+
+	reader := bufio.NewReader(resp.Body)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+
+		data := strings.TrimSpace(strings.TrimPrefix(line, "data: "))
+		if data == "" || data == "[DONE]" {
+			continue
+		}
+
+		var event struct {
+			Event string                 `json:"event"`
+			Data  map[string]interface{} `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			continue
+		}
+
+		switch event.Event {
+		case "response.reasoning.delta":
+			if delta, _ := event.Data["delta"].(string); delta != "" {
+				select {
+				case tokenChan <- StreamMessage{Type: "thinking", Content: delta}:
+				case <-ctx.Done():
+					return ChatStreamResult{}, ctx.Err()
+				}
+			}
+		case "response.output_text.delta":
+			if delta, _ := event.Data["delta"].(string); delta != "" {
+				contentBuffer.WriteString(delta)
+				select {
+				case tokenChan <- StreamMessage{Type: "chunk", Content: delta}:
+				case <-ctx.Done():
+					return ChatStreamResult{}, ctx.Err()
+				}
+			}
+		case "response.tool_call.started":
+			if toolName, _ := event.Data["tool_name"].(string); toolName != "" {
+				result.UsedTools = true
+				result.ToolEvents = append(result.ToolEvents, toolName)
+				select {
+				case tokenChan <- StreamMessage{Type: "status", Content: "Running tool: " + toolName + "..."}:
+				case <-ctx.Done():
+					return ChatStreamResult{}, ctx.Err()
+				}
+			}
+		case "response.tool_call.completed":
+			if toolName, _ := event.Data["tool_name"].(string); toolName != "" {
+				select {
+				case tokenChan <- StreamMessage{Type: "trace", Content: "Tool completed: " + toolName}:
+				case <-ctx.Done():
+					return ChatStreamResult{}, ctx.Err()
+				}
+			}
+		case "response.completed":
+			return result, nil
+		}
+	}
+
+	return result, nil
 }
 
 // ChatStreamingWithToolCalls handles a streaming chat request and extracts any tool calls
