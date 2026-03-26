@@ -104,20 +104,36 @@ vi.mock('../api/llm', () => ({
     Promise.resolve([
       {
         name: 'duckdb',
+        title: 'DuckDB',
+        summary: 'Query local structured data and run SQL over embedded analytics datasets.',
         provider_type: 'native',
+        scope: 'system',
         enabled: true,
         status: 'installed',
         reason: null,
+        activation_kind: 'config',
+        activation_target: 'stepbit-core/config/mcp_providers.json',
+        activation_key: 'duckdb',
+        activation_hint: 'Add "duckdb" to the enabled list and restart stepbit-core.',
+        supports_toggle: false,
         capabilities: ['sql-query'],
         installed_tools: ['duckdb_query'],
         planned_tools: [],
       },
       {
         name: 'quantlab',
+        title: 'QuantLab',
+        summary: 'Run quant research workflows, produce artifacts, and execute market-analysis commands.',
         provider_type: 'external',
+        scope: 'project',
         enabled: true,
         status: 'installed',
         reason: null,
+        activation_kind: 'ui-toggle',
+        activation_target: 'Stepbit App > System',
+        activation_key: null,
+        activation_hint: 'Use the Enable/Disable Plugin action in the app to change this provider.',
+        supports_toggle: true,
         capabilities: ['quant-research', 'multi-tool-surface', 'command:run', 'command:sweep', 'command:forward', 'command:portfolio'],
         installed_tools: ['quantlab_run', 'quantlab_sweep', 'quantlab_forward', 'quantlab_portfolio'],
         planned_tools: [],
@@ -138,8 +154,9 @@ describe('System Page', () => {
     expect(await screen.findByText('Recent Events')).toBeInTheDocument();
     expect(await screen.findByText('file.created')).toBeInTheDocument();
     expect(await screen.findByText('watcher')).toBeInTheDocument();
-    expect(await screen.findByText('quantlab_sweep')).toBeInTheDocument();
-    expect(await screen.findByText('Selected Peripheral')).toBeInTheDocument();
-    expect(await screen.findByText('Provider Guide')).toBeInTheDocument();
+    expect(await screen.findByText('Connected Capabilities')).toBeInTheDocument();
+    expect(await screen.findByText('QuantLab')).toBeInTheDocument();
+    expect(await screen.findByText('How to activate')).toBeInTheDocument();
+    expect(await screen.findByText('Provider guide')).toBeInTheDocument();
   });
 });
