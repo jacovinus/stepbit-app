@@ -1,10 +1,18 @@
 import api from './client';
 
+export interface SkillPolicy {
+  description?: string;
+  allowed_tools?: string[];
+  citation_policy?: string;
+  preferred_outputs?: string[];
+}
+
 export interface Skill {
   id: number;
   name: string;
   content: string;
   tags: string;
+  policy?: SkillPolicy;
   source_url?: string;
   created_at: string;
   updated_at: string;
@@ -14,6 +22,7 @@ export interface CreateSkillRequest {
   name: string;
   content: string;
   tags?: string;
+  policy?: SkillPolicy;
   source_url?: string;
 }
 
@@ -21,6 +30,7 @@ export interface UpdateSkillRequest {
   name?: string;
   content?: string;
   tags?: string;
+  policy?: SkillPolicy;
 }
 
 export interface FetchUrlRequest {

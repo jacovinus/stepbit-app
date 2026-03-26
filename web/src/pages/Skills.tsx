@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { skillsApi, type Skill, type CreateSkillRequest, type UpdateSkillRequest } from '../api/skills';
+import { skillsApi, type Skill, type CreateSkillRequest, type UpdateSkillRequest, type SkillPolicy } from '../api/skills';
 import {
     BookOpen, Plus, Clipboard, Pencil, Trash2, X, Check,
     Link, Loader2, Tag, Search, ChevronDown
 } from 'lucide-react';
+import { SkillPolicyEditor } from '../components/skills/SkillPolicyEditor';
+import { SkillPolicySummary } from '../components/skills/SkillPolicySummary';
 
 function parseTags(tags: string): string[] {
     return tags.split(',').map(t => t.trim()).filter(Boolean);
@@ -85,6 +87,8 @@ const SkillCard = ({ skill, onEdit, onView, onDelete }: SkillCardProps) => {
                 </div>
             )}
 
+            <SkillPolicySummary policy={skill.policy} />
+
             {/* Content preview */}
             <pre className="flex-1 min-h-0 overflow-hidden text-sm text-gruv-light-4 font-mono whitespace-pre-wrap leading-relaxed rounded-xs bg-gruv-dark-0/50 p-3 border border-gruv-dark-4/20">
                 {preview}{isLong && '...'}
@@ -131,6 +135,7 @@ const SkillViewer = ({ skill, onClose }: { skill: Skill; onClose: () => void }) 
                             {tags.map(t => <TagBadge key={t} label={t} />)}
                         </div>
                     )}
+                    <SkillPolicySummary policy={skill.policy} />
                     <pre className="w-full bg-gruv-dark-0 border border-gruv-dark-4/30 rounded-xs px-4 py-4 text-gruv-light-1 font-mono text-sm whitespace-pre-wrap leading-relaxed overflow-x-auto">
                         {skill.content}
                     </pre>
@@ -162,6 +167,12 @@ const SkillForm = ({ initial, onClose, onSaved }: SkillFormProps) => {
     const [name, setName] = useState(initial?.name ?? '');
     const [content, setContent] = useState(initial?.content ?? '');
     const [tags, setTags] = useState(initial?.tags ?? '');
+    const [policy, setPolicy] = useState<SkillPolicy>(initial?.policy ?? {
+        description: '',
+        allowed_tools: [],
+        citation_policy: 'none',
+        preferred_outputs: [],
+    });
     const [importUrl, setImportUrl] = useState('');
     const [showImport, setShowImport] = useState(false);
 
@@ -192,9 +203,9 @@ const SkillForm = ({ initial, onClose, onSaved }: SkillFormProps) => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (isEdit) {
-            updateMut.mutate({ name, content, tags });
+            updateMut.mutate({ name, content, tags, policy });
         } else {
-            createMut.mutate({ name, content, tags });
+            createMut.mutate({ name, content, tags, policy });
         }
     };
 
@@ -248,6 +259,8 @@ const SkillForm = ({ initial, onClose, onSaved }: SkillFormProps) => {
                             className="w-full bg-gruv-dark-0 border border-gruv-dark-4/30 rounded-xs px-4 py-3 text-gruv-light-1 font-mono text-sm placeholder:text-gruv-dark-4 focus:outline-none focus:border-monokai-pink/60 transition-colors resize-y"
                         />
                     </div>
+
+                    <SkillPolicyEditor value={policy} onChange={setPolicy} />
 
                     {/* Import from URL */}
                     {!isEdit && (
