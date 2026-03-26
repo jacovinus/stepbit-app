@@ -10,12 +10,29 @@ export interface Session {
 export interface Message {
   id: number;
   session_id: string;
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   model: string | null;
   token_count: number | null;
   created_at: string;
   metadata: Record<string, any>;
+}
+
+export interface TurnCapabilityTool {
+  name: string;
+  provider_id: string;
+  enabled: boolean;
+  read_only: boolean;
+  open_world: boolean;
+  tags: string[];
+}
+
+export interface TurnCapabilityContext {
+  search_enabled: boolean;
+  reason_enabled: boolean;
+  requested_tools: string[];
+  available_tools: TurnCapabilityTool[];
+  used_tools: string[];
 }
 
 export interface CreateSessionRequest {
@@ -39,8 +56,9 @@ export interface CreateMessageRequest {
 }
 
 export interface WsServerMessage {
-  type: 'chunk' | 'done' | 'error' | 'status' | 'trace';
+  type: 'chunk' | 'done' | 'error' | 'status' | 'trace' | 'context';
   content: string;
+  metadata?: Record<string, any>;
 }
 
 export interface WsClientMessage {

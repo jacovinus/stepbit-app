@@ -249,6 +249,19 @@ func TestChatService_UsesStructuredPathWhenAvailable(t *testing.T) {
 			Structured: true,
 			UsedTools:  true,
 			ToolEvents: []string{"internet_search"},
+			TurnContext: &core.TurnCapabilityContext{
+				SearchEnabled:  true,
+				RequestedTools: []string{"internet_search"},
+				AvailableTools: []core.TurnCapabilityTool{{
+					Name:       "internet_search",
+					ProviderID: "web",
+					Enabled:    true,
+					ReadOnly:   true,
+					OpenWorld:  true,
+					Tags:       []string{"web"},
+				}},
+				UsedTools: []string{"internet_search"},
+			},
 		},
 		structuredStream: []core.StreamMessage{
 			{Type: "status", Content: "Running tool: internet_search..."},
@@ -285,12 +298,18 @@ func TestChatService_UsesStructuredPathWhenAvailable(t *testing.T) {
 	if assistant.Metadata["structured"] != true {
 		t.Fatalf("expected structured metadata, got %#v", assistant.Metadata)
 	}
+	if assistant.Metadata["turn_context"] == nil {
+		t.Fatalf("expected turn context metadata, got %#v", assistant.Metadata)
+	}
 
 	if !containsMessage(writes, "done", "") {
 		t.Fatalf("expected done message in websocket writes: %#v", writes)
 	}
 	if !containsMessage(writes, "status", "Running tool: internet_search...") {
 		t.Fatalf("expected structured tool status in websocket writes: %#v", writes)
+	}
+	if !containsMessage(writes, "context", "") {
+		t.Fatalf("expected context message in websocket writes: %#v", writes)
 	}
 }
 

@@ -58,6 +58,7 @@ type WsClientMessage struct {
 }
 
 type WsServerMessage struct {
-	Type    string `json:"type"` // "chunk", "status", "trace", "done", "error"
-	Content string `json:"content"`
+	Type     string                 `json:"type"` // "chunk", "status", "trace", "context", "done", "error"
+	Content  string                 `json:"content"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
