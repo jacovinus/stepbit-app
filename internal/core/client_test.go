@@ -3,9 +3,11 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -138,6 +140,73 @@ func TestStepbitCoreClient_ChatStreamingWithToolCalls_ExtractsToolCalls(t *testi
 	}
 	if result.ToolCalls[0].Function.Name != "internet_search" {
 		t.Fatalf("expected internet_search, got %q", result.ToolCalls[0].Function.Name)
+	}
+}
+
+func TestStepbitCoreClient_ChatStreamingStructured_ParsesStructuredEvents(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/responses" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.created","data":{"id":"resp-1"}}`)
+		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.tool_call.started","data":{"tool_name":"internet_search"}}`)
+		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.output_text.delta","data":{"delta":"Hello"}}`)
+		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.output_text.delta","data":{"delta":" world"}}`)
+		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.completed","data":{"finish_reason":"stop"}}`)
+	}))
+	defer server.Close()
+
+	client := NewStepbitCoreClient(server.URL, "master-key", "model-1")
+	tokenChan := make(chan StreamMessage, 10)
+
+	result, err := client.ChatStreamingStructured(context.Background(), []Message{{Role: "user", Content: "hi"}}, ChatOptions{}, tokenChan)
+	if err != nil {
+		t.Fatalf("ChatStreamingStructured failed: %v", err)
+	}
+	close(tokenChan)
+
+	var chunks []string
+	var statuses []string
+	for msg := range tokenChan {
+		switch msg.Type {
+		case "chunk":
+			chunks = append(chunks, msg.Content)
+		case "status":
+			statuses = append(statuses, msg.Content)
+		}
+	}
+
+	if !result.Structured {
+		t.Fatalf("expected structured result")
+	}
+	if !result.UsedTools {
+		t.Fatalf("expected tool usage to be detected")
+	}
+	if len(result.ToolEvents) != 1 || result.ToolEvents[0] != "internet_search" {
+		t.Fatalf("unexpected tool events: %#v", result.ToolEvents)
+	}
+	if strings.Join(chunks, "") != "Hello world" {
+		t.Fatalf("unexpected chunk output: %q", strings.Join(chunks, ""))
+	}
+	if len(statuses) != 1 || statuses[0] != "Running tool: internet_search..." {
+		t.Fatalf("unexpected statuses: %#v", statuses)
+	}
+}
+
+func TestStepbitCoreClient_ChatStreamingStructured_ReturnsUnavailableForUnsupportedEndpoint(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	client := NewStepbitCoreClient(server.URL, "master-key", "model-1")
+	tokenChan := make(chan StreamMessage, 1)
+
+	_, err := client.ChatStreamingStructured(context.Background(), []Message{{Role: "user", Content: "hi"}}, ChatOptions{}, tokenChan)
+	if !errors.Is(err, ErrStructuredResponsesUnavailable) {
+		t.Fatalf("expected ErrStructuredResponsesUnavailable, got %v", err)
 	}
 }
 

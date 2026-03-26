@@ -2,12 +2,14 @@ package services
 
 import (
 	"context"
+	"errors"
 	"log"
 	"stepbit-app/internal/chattools"
 	configModels "stepbit-app/internal/config/models"
 	"stepbit-app/internal/config/services"
 	"stepbit-app/internal/core"
 	"stepbit-app/internal/session/models"
+	skillServices "stepbit-app/internal/skill/services"
 	"strings"
 	"time"
 
@@ -18,16 +20,18 @@ import (
 type ChatService struct {
 	coreClient     streamingChatClient
 	sessionService *SessionService
+	skillService   *skillServices.SkillService
 	configService  *services.ConfigService
 	config         *configModels.AppConfig
 	toolRegistry   *chattools.Registry
 	activeRuns     *activeRunRegistry
 }
 
-func NewChatService(coreClient streamingChatClient, sessionService *SessionService, configService *services.ConfigService, config *configModels.AppConfig) *ChatService {
+func NewChatService(coreClient streamingChatClient, sessionService *SessionService, skillService *skillServices.SkillService, configService *services.ConfigService, config *configModels.AppConfig) *ChatService {
 	return &ChatService{
 		coreClient:     coreClient,
 		sessionService: sessionService,
+		skillService:   skillService,
 		configService:  configService,
 		config:         config,
 		toolRegistry:   chattools.NewRegistry(),
@@ -106,6 +110,13 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 		})
 	}
 
+	if skillPrompt := s.buildSelectedSkillsPrompt(msg.SkillIDs); skillPrompt != "" {
+		llmMsgs = append([]core.Message{{
+			Role:    "system",
+			Content: skillPrompt,
+		}}, llmMsgs...)
+	}
+
 	// 4. Call Core for Streaming
 	tokenChan := make(chan core.StreamMessage, 100)
 	errChan := make(chan error, 1)
@@ -123,21 +134,14 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 	activeProvider, _ := s.configService.GetActiveProvider(ctx)
 	providerID := activeProvider["id"].(string)
 
-	toolDefinitions := s.toolRegistry.DefinitionsWithoutWebTools(search)
-	if len(toolDefinitions) > 0 {
-		llmMsgs = append([]core.Message{{
-			Role:    "system",
-			Content: buildToolSystemPrompt(search, reason, toolDefinitions),
-		}}, llmMsgs...)
-	}
-
 	const maxLoops = 5
 	store := toolResultStoreAdapter{service: s.sessionService}
 
 	for loop := 0; loop < maxLoops; loop++ {
-		go func(messages []core.Message) {
-			log.Printf("[WS-Chat] Calling ChatStreamingWithToolCalls (provider=%s) with %d messages, model=%s", providerID, len(messages), activeModel)
+		tokenChan = make(chan core.StreamMessage, 100)
+		errChan = make(chan error, 1)
 
+		go func(messages []core.Message) {
 			options := core.ChatOptions{
 				Model:  activeModel,
 				Search: search,
@@ -147,7 +151,26 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 				options.BaseURL = strings.TrimSuffix(s.config.Providers.Ollama.URL, "/")
 			}
 
-			_, err := s.coreClient.ChatStreamingWithToolCalls(ctx, messages, options, tokenChan)
+			log.Printf("[WS-Chat] Calling structured chat stream (provider=%s) with %d messages, model=%s", providerID, len(messages), activeModel)
+			result, err := s.coreClient.ChatStreamingStructured(ctx, messages, options, tokenChan)
+			if errors.Is(err, core.ErrStructuredResponsesUnavailable) {
+				toolDefinitions := s.toolRegistry.DefinitionsWithoutWebTools(search)
+				legacyMessages := append([]core.Message(nil), messages...)
+				if len(toolDefinitions) > 0 {
+					legacyMessages = append([]core.Message{{
+						Role:    "system",
+						Content: buildToolSystemPrompt(search, reason, toolDefinitions),
+					}}, legacyMessages...)
+				}
+
+				log.Printf("[WS-Chat] Structured stream unavailable; falling back to legacy tool-call parsing")
+				result, err = s.coreClient.ChatStreamingWithToolCalls(ctx, legacyMessages, options, tokenChan)
+			} else if err == nil && result.Structured {
+				errChan <- structuredChatResultError{result: result}
+				close(tokenChan)
+				return
+			}
+
 			errChan <- err
 			close(tokenChan)
 		}(append([]core.Message(nil), llmMsgs...))
@@ -173,6 +196,27 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 		}
 
 		err := <-errChan
+		rawTurnContent := turnContent.String()
+		var structuredResult structuredChatResultError
+		if errors.As(err, &structuredResult) {
+			s.sessionService.InsertMessage(&models.Message{
+				SessionID: sessionID,
+				Role:      "assistant",
+				Content:   rawTurnContent,
+				Metadata: map[string]interface{}{
+					"structured": true,
+					"tool_calls": structuredResult.result.ToolEvents,
+				},
+			})
+
+			llmMsgs = append(llmMsgs, core.Message{
+				Role:    "assistant",
+				Content: rawTurnContent,
+			})
+
+			write(models.WsServerMessage{Type: "done", Content: ""})
+			return
+		}
 		if err != nil {
 			log.Printf("[WS-Chat] ChatStreaming error: %v", err)
 			if ctx.Err() == nil {
@@ -181,7 +225,6 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 			return
 		}
 
-		rawTurnContent := turnContent.String()
 		cleanTurnContent := rawTurnContent
 		toolCalls, strippedContent, ok := core.ExtractStreamingToolCalls(rawTurnContent)
 		if ok {
@@ -239,9 +282,23 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 			})
 		}
 
-		tokenChan = make(chan core.StreamMessage, 100)
-		errChan = make(chan error, 1)
 	}
 
 	write(models.WsServerMessage{Type: "error", Content: "Maximum tool-call loops reached"})
+}
+
+func (s *ChatService) buildSelectedSkillsPrompt(skillIDs []int64) string {
+	if len(skillIDs) == 0 || s.skillService == nil {
+		return ""
+	}
+
+	skills, err := s.skillService.GetSkillsByIDs(skillIDs)
+	if err != nil || len(skills) == 0 {
+		if err != nil {
+			log.Printf("[WS-Chat] Failed to load selected skills: %v", err)
+		}
+		return ""
+	}
+
+	return buildSkillPolicyPrompt(skills)
 }
