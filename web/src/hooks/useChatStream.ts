@@ -9,6 +9,14 @@ export const useChatStream = (sessionId: string | null) => {
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const streamBufferRef = useRef<string>("");
+  const activeAssistantIdRef = useRef<number | null>(null);
+  const pendingAssistantMetadataRef = useRef<Record<string, any>>({});
+
+  const clearTurnRefs = () => {
+    streamBufferRef.current = "";
+    activeAssistantIdRef.current = null;
+    pendingAssistantMetadataRef.current = {};
+  };
 
   const connect = useCallback((apiKey: string) => {
     if (!sessionId) return;
@@ -46,27 +54,36 @@ export const useChatStream = (sessionId: string | null) => {
         setIsWaiting(false);
         setStatus(null);
         streamBufferRef.current += data.content;
-        
-        // Update the last assistant message in state or add a temporary one
+
         setMessages(prev => {
-          const last = prev[prev.length - 1];
-          if (last && last.role === 'assistant') {
-            return [
-              ...prev.slice(0, -1),
-              { ...last, content: streamBufferRef.current }
-            ];
+          const assistantId = activeAssistantIdRef.current;
+          if (assistantId != null) {
+            return prev.map(message =>
+              message.id === assistantId
+                ? {
+                    ...message,
+                    content: streamBufferRef.current,
+                    metadata: {
+                      ...(message.metadata || {}),
+                      ...pendingAssistantMetadataRef.current,
+                    },
+                  }
+                : message,
+            );
           } else {
+            const nextId = Date.now();
+            activeAssistantIdRef.current = nextId;
             return [
               ...prev,
               { 
-                id: Date.now(), 
+                id: nextId,
                 session_id: sessionId, 
                 role: 'assistant', 
                 content: data.content,
                 model: 'streaming...',
                 token_count: null,
                 created_at: new Date().toISOString(),
-                metadata: {}
+                metadata: { ...pendingAssistantMetadataRef.current }
               } as Message
             ];
           }
@@ -75,34 +92,44 @@ export const useChatStream = (sessionId: string | null) => {
         setIsWaiting(true);
         setStatus(data.content);
       } else if (data.type === 'context') {
+        pendingAssistantMetadataRef.current = {
+          ...pendingAssistantMetadataRef.current,
+          ...(data.metadata || {}),
+        };
         setMessages(prev => {
-          const next = [...prev];
-          for (let i = next.length - 1; i >= 0; i -= 1) {
-            if (next[i].role === 'assistant') {
-              next[i] = {
-                ...next[i],
-                metadata: {
-                  ...(next[i].metadata || {}),
-                  ...(data.metadata || {}),
-                },
-              };
-              break;
-            }
+          const assistantId = activeAssistantIdRef.current;
+          if (assistantId == null) {
+            return prev;
           }
-          return next;
+          return prev.map(message =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  metadata: {
+                    ...(message.metadata || {}),
+                    ...(data.metadata || {}),
+                  },
+                }
+              : message,
+          );
         });
       } else if (data.type === 'done') {
         console.log('Stream done signal received');
         setIsStreaming(false);
         setIsWaiting(false);
         setStatus(null);
-        streamBufferRef.current = "";
+        clearTurnRefs();
       } else if (data.type === 'error') {
         console.error('Stream error message received:', data.content);
         setError(data.content);
+        const assistantId = activeAssistantIdRef.current;
+        if (assistantId != null && streamBufferRef.current.length === 0) {
+          setMessages(prev => prev.filter(message => message.id !== assistantId));
+        }
         setIsStreaming(false);
         setIsWaiting(false);
         setStatus(null);
+        clearTurnRefs();
       }
     };
 
@@ -112,6 +139,7 @@ export const useChatStream = (sessionId: string | null) => {
       setIsStreaming(false);
       setIsWaiting(false);
       setStatus(null);
+      clearTurnRefs();
     };
 
     ws.onclose = (e) => {
@@ -119,6 +147,7 @@ export const useChatStream = (sessionId: string | null) => {
       setIsStreaming(false);
       setIsWaiting(false);
       setStatus(null);
+      clearTurnRefs();
     };
   }, [sessionId]);
 
@@ -130,6 +159,7 @@ export const useChatStream = (sessionId: string | null) => {
 
     setIsWaiting(true);
     setStatus('Thinking...');
+    clearTurnRefs();
 
     const clientMsg: WsClientMessage = {
       type: 'message',
