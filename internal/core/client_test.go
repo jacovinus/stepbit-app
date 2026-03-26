@@ -229,6 +229,66 @@ func TestStepbitCoreClient_CancelChat(t *testing.T) {
 	}
 }
 
+func TestStepbitCoreClient_GetMCPTools_PrefersCapabilityInventoryEndpoint(t *testing.T) {
+	var requestedPaths []string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPaths = append(requestedPaths, r.URL.Path)
+		switch r.URL.Path {
+		case "/v1/tools":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{"tools":[{"name":"internet_search","provider_id":"web","enabled":true}]}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := NewStepbitCoreClient(server.URL, "master-key", "model-1")
+	tools, err := client.GetMCPTools(context.Background())
+	if err != nil {
+		t.Fatalf("GetMCPTools failed: %v", err)
+	}
+
+	if len(tools) != 1 || tools[0]["name"] != "internet_search" {
+		t.Fatalf("unexpected tools payload: %#v", tools)
+	}
+	if len(requestedPaths) != 1 || requestedPaths[0] != "/v1/tools" {
+		t.Fatalf("expected only /v1/tools to be requested, got %#v", requestedPaths)
+	}
+}
+
+func TestStepbitCoreClient_GetMCPProviders_FallsBackToLegacyEndpoint(t *testing.T) {
+	var requestedPaths []string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPaths = append(requestedPaths, r.URL.Path)
+		switch r.URL.Path {
+		case "/v1/providers":
+			http.NotFound(w, r)
+		case "/v1/mcp/providers":
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{"providers":[{"name":"workspace","enabled":true}]}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	client := NewStepbitCoreClient(server.URL, "master-key", "model-1")
+	providers, err := client.GetMCPProviders(context.Background())
+	if err != nil {
+		t.Fatalf("GetMCPProviders failed: %v", err)
+	}
+
+	if len(providers) != 1 || providers[0]["name"] != "workspace" {
+		t.Fatalf("unexpected providers payload: %#v", providers)
+	}
+	if strings.Join(requestedPaths, ",") != "/v1/providers,/v1/mcp/providers" {
+		t.Fatalf("unexpected request order: %#v", requestedPaths)
+	}
+}
+
 func TestParseMetricsSummary(t *testing.T) {
 	metrics := `
 # HELP requests_total Total API requests

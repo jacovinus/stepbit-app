@@ -3,6 +3,7 @@ import { deleteArtifact, executeMcpTool, fetchArtifactBlob, fetchArtifactText, f
 import { Wrench, Box, Code, Play, RefreshCw, Sparkles, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ChartComponent } from '../components/ChartComponent';
+import { CapabilityBadge, ProviderSummaryBadges, ToolCapabilityBadges } from '../components/capabilities/CapabilityBadges';
 import { MarkdownContent } from '../components/MarkdownContent';
 import { useAppDialog } from '../components/ui/AppDialogProvider';
 import { toast } from 'sonner';
@@ -51,6 +52,13 @@ const McpTools: React.FC = () => {
     () => tools.find((tool) => tool.name === selectedTool) || null,
     [selectedTool, tools],
   );
+  const providerById = useMemo(
+    () =>
+      new Map(
+        providers.map((provider) => [provider.id || provider.name, provider]),
+      ),
+    [providers],
+  );
 
   const schemaProperties = useMemo(() => {
     const properties = activeTool?.input_schema?.properties;
@@ -62,6 +70,10 @@ const McpTools: React.FC = () => {
   const quantLabCharts = useMemo(() => buildQuantLabCharts(quantLabResult), [quantLabResult]);
   const plannedTools = useMemo(
     () => providers.flatMap((provider) => (provider.planned_tools ?? []).map((tool) => ({ provider: provider.name, tool }))),
+    [providers],
+  );
+  const installedProviderSummaries = useMemo(
+    () => providers.filter((provider) => provider.status === 'installed' || provider.enabled),
     [providers],
   );
   const activePlannedTool = useMemo(
@@ -290,6 +302,45 @@ const McpTools: React.FC = () => {
       </div>
 
       <div className="space-y-4">
+        {installedProviderSummaries.length > 0 && (
+          <section className="glass border border-white/10 rounded-xs p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-base font-semibold text-gruv-light-1">Installed Capability Providers</h2>
+                <p className="text-xs text-gruv-light-4 mt-1">This is the visible provider inventory exposed by the core. It shows scope, type, and current tool surface without having to infer capabilities from prompts.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {installedProviderSummaries.map((provider) => (
+                <div key={provider.id || provider.name} className="rounded-xs border border-white/10 bg-black/20 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gruv-light-1">{provider.id || provider.name}</p>
+                      <p className="mt-1 text-xs text-gruv-light-4">{provider.reason || provider.status}</p>
+                    </div>
+                    <CapabilityBadge
+                      label={provider.enabled ? 'enabled' : 'disabled'}
+                      tone={provider.enabled ? 'success' : 'warning'}
+                    />
+                  </div>
+                  <ProviderSummaryBadges
+                    scope={provider.scope}
+                    providerType={provider.provider_type}
+                    toolCount={provider.tool_count ?? provider.installed_tools.length}
+                  />
+                  {provider.capabilities.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {provider.capabilities.slice(0, 4).map((capability) => (
+                        <CapabilityBadge key={capability} label={capability} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {plannedTools.length > 0 && (
           <section className="glass border border-white/10 rounded-xs p-4">
             <div className="flex items-start justify-between gap-3 mb-3">
@@ -363,9 +414,29 @@ const McpTools: React.FC = () => {
                 <div className="p-2 rounded-lg bg-gruv-dark-3">
                   <Box className="w-5 h-5 text-monokai-aqua" />
                 </div>
-                <h3 className="text-lg font-bold text-gruv-light-1">{tool.name}</h3>
+                <div>
+                  <h3 className="text-lg font-bold text-gruv-light-1">{tool.name}</h3>
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-gruv-light-4 mt-1">
+                    {(providerById.get(tool.provider_id || '')?.id || tool.provider_id || 'unknown provider').toString()}
+                  </p>
+                </div>
               </div>
               <p className="text-gruv-light-4 text-sm italic">{tool.description}</p>
+              <div className="mt-3 space-y-2">
+                <ToolCapabilityBadges
+                  readOnly={tool.read_only}
+                  openWorld={tool.open_world}
+                  destructive={tool.destructive}
+                  tags={tool.tags}
+                />
+                {tool.provider_id && providerById.get(tool.provider_id) && (
+                  <ProviderSummaryBadges
+                    scope={providerById.get(tool.provider_id)?.scope}
+                    providerType={providerById.get(tool.provider_id)?.provider_type}
+                    toolCount={providerById.get(tool.provider_id)?.tool_count}
+                  />
+                )}
+              </div>
             </motion.button>
           ))}
         </div>
@@ -381,6 +452,19 @@ const McpTools: React.FC = () => {
             <div>
               <h2 className="text-lg font-semibold text-gruv-light-1">{activeTool?.name || 'Tool Playground'}</h2>
               <p className="text-xs text-gruv-light-4">Execution-only surface. Start with guided fields when the schema is simple; switch to raw JSON when needed.</p>
+              {activeTool && (
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="text-[11px] text-gruv-light-4">
+                    Provider: <span className="text-gruv-light-2">{providerById.get(activeTool.provider_id || '')?.id || activeTool.provider_id || 'unknown'}</span>
+                  </div>
+                  <ToolCapabilityBadges
+                    readOnly={activeTool.read_only}
+                    openWorld={activeTool.open_world}
+                    destructive={activeTool.destructive}
+                    tags={activeTool.tags}
+                  />
+                </div>
+              )}
             </div>
             <button
               onClick={handleRun}
