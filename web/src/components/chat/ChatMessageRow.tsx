@@ -4,6 +4,7 @@ import { clsx } from 'clsx';
 import { MarkdownContent } from '../MarkdownContent';
 import type { Message, TurnCapabilityContext } from '../../types';
 import { TurnCapabilityContextCard } from './TurnCapabilityContextCard';
+import { StructuredArtifactsCard } from './StructuredArtifactsCard';
 
 type Props = {
   message: Message;
@@ -66,6 +67,7 @@ export const ChatMessageRow: React.FC<Props> = ({ message, index, raw, onToggleR
         )}
 
         <TurnCapabilityContextCard context={turnContext} />
+        <StructuredArtifactsCard message={message} />
       </div>
     </div>
   );
