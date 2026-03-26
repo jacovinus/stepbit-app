@@ -44,10 +44,11 @@ type StreamMessage struct {
 }
 
 type ChatStreamResult struct {
-	ToolCalls  []ToolCall
-	Structured bool
-	ToolEvents []string
-	UsedTools  bool
+	ToolCalls   []ToolCall
+	Structured  bool
+	ToolEvents  []string
+	UsedTools   bool
+	TurnContext *TurnCapabilityContext
 }
 
 // ChatOptions represents options for the chat request
@@ -268,6 +269,16 @@ func (c *StepbitCoreClient) ChatStreamingStructured(ctx context.Context, message
 		}
 
 		switch event.Event {
+		case "response.created":
+			if rawTurnContext, ok := event.Data["turn_context"]; ok {
+				encoded, err := json.Marshal(rawTurnContext)
+				if err == nil {
+					var turnContext TurnCapabilityContext
+					if err := json.Unmarshal(encoded, &turnContext); err == nil {
+						result.TurnContext = &turnContext
+					}
+				}
+			}
 		case "response.reasoning.delta":
 			if delta, _ := event.Data["delta"].(string); delta != "" {
 				select {

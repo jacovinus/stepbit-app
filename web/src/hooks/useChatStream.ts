@@ -74,6 +74,23 @@ export const useChatStream = (sessionId: string | null) => {
       } else if (data.type === 'status' || data.type === 'trace') {
         setIsWaiting(true);
         setStatus(data.content);
+      } else if (data.type === 'context') {
+        setMessages(prev => {
+          const next = [...prev];
+          for (let i = next.length - 1; i >= 0; i -= 1) {
+            if (next[i].role === 'assistant') {
+              next[i] = {
+                ...next[i],
+                metadata: {
+                  ...(next[i].metadata || {}),
+                  ...(data.metadata || {}),
+                },
+              };
+              break;
+            }
+          }
+          return next;
+        });
       } else if (data.type === 'done') {
         console.log('Stream done signal received');
         setIsStreaming(false);
