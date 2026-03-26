@@ -19,7 +19,7 @@ Before calling the structured path launch-ready:
 - smoke-test these prompts in the chat UI:
   - "What time is it now?"
   - "What time is it in Europe/Madrid right now?"
-  - "Search the latest news about Iran"
+  - "Search the latest renewable energy headlines"
   - a direct URL read request
 
 ## Expected Behavior

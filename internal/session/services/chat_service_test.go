@@ -262,6 +262,23 @@ func TestChatService_UsesStructuredPathWhenAvailable(t *testing.T) {
 				}},
 				UsedTools: []string{"internet_search"},
 			},
+			OutputItems: []core.StructuredOutputItem{
+				{
+					ID:       "tool-0-citation-0",
+					ItemType: "citation",
+					Role:     "assistant",
+					Status:   "completed",
+					Content: []core.StructuredContentItem{{
+						ContentType: "citation",
+						Text:        "Example Source",
+						Citation: &core.StructuredCitation{
+							SourceID: "src_1",
+							Title:    "Example Source",
+							URL:      "https://example.com/story",
+						},
+					}},
+				},
+			},
 		},
 		structuredStream: []core.StreamMessage{
 			{Type: "status", Content: "Running tool: internet_search..."},
@@ -300,6 +317,9 @@ func TestChatService_UsesStructuredPathWhenAvailable(t *testing.T) {
 	}
 	if assistant.Metadata["turn_context"] == nil {
 		t.Fatalf("expected turn context metadata, got %#v", assistant.Metadata)
+	}
+	if assistant.Metadata["output_items"] == nil {
+		t.Fatalf("expected structured output items metadata, got %#v", assistant.Metadata)
 	}
 
 	if !containsMessage(writes, "done", "") {
