@@ -437,11 +437,13 @@ func (c *StepbitCoreClient) ChatCompletion(ctx context.Context, messages []Messa
 	return strings.TrimSpace(builder.String()), nil
 }
 
-// GetMCPTools fetches the list of MCP tools from stepbit-core
-func (c *StepbitCoreClient) GetMCPTools(ctx context.Context) ([]map[string]interface{}, error) {
-	// Try the current core path first, then fall back to the legacy compatibility path.
+func (c *StepbitCoreClient) fetchListFromPaths(
+	ctx context.Context,
+	paths []string,
+	key string,
+) ([]map[string]interface{}, error) {
 	var lastErr error
-	for _, path := range []string{"/v1/mcp/tools", "/llm/mcp/tools"} {
+	for _, path := range paths {
 		resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, path, nil)
 		if err != nil {
 			lastErr = err
@@ -454,38 +456,29 @@ func (c *StepbitCoreClient) GetMCPTools(ctx context.Context) ([]map[string]inter
 			continue
 		}
 
-		var result struct {
-			Tools []map[string]interface{} `json:"tools"`
-		}
+		var result map[string][]map[string]interface{}
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			lastErr = err
 			continue
 		}
-		return result.Tools, nil
+		items, ok := result[key]
+		if !ok {
+			lastErr = fmt.Errorf("response missing %q field", key)
+			continue
+		}
+		return items, nil
 	}
+
 	return []map[string]interface{}{}, lastErr
 }
 
+// GetMCPTools fetches the list of MCP tools from stepbit-core.
+func (c *StepbitCoreClient) GetMCPTools(ctx context.Context) ([]map[string]interface{}, error) {
+	return c.fetchListFromPaths(ctx, []string{"/v1/tools", "/v1/mcp/tools", "/llm/mcp/tools"}, "tools")
+}
+
 func (c *StepbitCoreClient) GetMCPProviders(ctx context.Context) ([]map[string]interface{}, error) {
-	resp, err := c.DoAuthenticatedRequest(ctx, http.MethodGet, "/v1/mcp/providers", nil)
-	if err != nil {
-		return []map[string]interface{}{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return []map[string]interface{}{}, fmt.Errorf("mcp providers request failed (%d): %s", resp.StatusCode, string(body))
-	}
-
-	var result struct {
-		Providers []map[string]interface{} `json:"providers"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return []map[string]interface{}{}, err
-	}
-
-	return result.Providers, nil
+	return c.fetchListFromPaths(ctx, []string{"/v1/providers", "/v1/mcp/providers"}, "providers")
 }
 
 func (c *StepbitCoreClient) UpdateMCPProviderState(ctx context.Context, name string, enabled bool) (map[string]interface{}, error) {
