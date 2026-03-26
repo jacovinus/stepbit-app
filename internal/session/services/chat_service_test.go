@@ -23,10 +23,32 @@ type fakeStreamingChatClient struct {
 	cancelledSessions []string
 	mu                sync.Mutex
 	blockOnStream     bool
+	structuredResult  core.ChatStreamResult
+	structuredErr     error
+	structuredStream  []core.StreamMessage
 }
 
 func (f *fakeStreamingChatClient) ChatStreamingStructured(ctx context.Context, messages []core.Message, options core.ChatOptions, tokenChan chan<- core.StreamMessage) (core.ChatStreamResult, error) {
-	return core.ChatStreamResult{}, core.ErrStructuredResponsesUnavailable
+	_ = messages
+	_ = options
+	if f.blockOnStream {
+		<-ctx.Done()
+		return core.ChatStreamResult{}, ctx.Err()
+	}
+	if f.structuredErr == nil && len(f.structuredStream) == 0 && !f.structuredResult.Structured {
+		return core.ChatStreamResult{}, core.ErrStructuredResponsesUnavailable
+	}
+	for _, message := range f.structuredStream {
+		select {
+		case tokenChan <- message:
+		case <-ctx.Done():
+			return core.ChatStreamResult{}, ctx.Err()
+		}
+	}
+	if f.structuredErr != nil {
+		return core.ChatStreamResult{}, f.structuredErr
+	}
+	return f.structuredResult, nil
 }
 
 func (f *fakeStreamingChatClient) ChatStreamingWithToolCalls(ctx context.Context, messages []core.Message, options core.ChatOptions, tokenChan chan<- core.StreamMessage) (core.ChatStreamResult, error) {
@@ -181,6 +203,88 @@ func TestChatService_CancelActiveRun(t *testing.T) {
 	if chatService.CancelActiveRun(context.Background(), sessionID) {
 		t.Fatal("expected second cancellation to report no active run")
 	}
+}
+
+func TestChatService_UsesStructuredPathWhenAvailable(t *testing.T) {
+	dbPath := "./test_chat_structured.db"
+	defer os.Remove(dbPath)
+
+	db, err := duckdb.NewConnection(dbPath)
+	if err != nil {
+		t.Fatalf("Failed to connect to duckdb: %v", err)
+	}
+	defer db.Close()
+
+	if err := duckdb.InitSchema(db); err != nil {
+		t.Fatalf("Failed to init schema: %v", err)
+	}
+
+	sessionService := NewSessionService(db)
+	sessionID := uuid.New()
+	if err := sessionService.InsertSession(&models.Session{ID: sessionID, Title: "Structured Session"}); err != nil {
+		t.Fatalf("InsertSession failed: %v", err)
+	}
+
+	client := &fakeStreamingChatClient{
+		structuredResult: core.ChatStreamResult{
+			Structured: true,
+			UsedTools:  true,
+			ToolEvents: []string{"internet_search"},
+		},
+		structuredStream: []core.StreamMessage{
+			{Type: "status", Content: "Running tool: internet_search..."},
+			{Type: "chunk", Content: "Latest headlines"},
+		},
+	}
+	configService := configServices.NewConfigService(core.NewStepbitCoreClient("http://localhost:1", "test-key", "model-1"), &configModels.AppConfig{})
+	configService.SetActiveModel("model-1")
+
+	chatService := NewChatService(client, sessionService, nil, configService, &configModels.AppConfig{})
+
+	var writes []models.WsServerMessage
+	chatService.handleWsChatMessage(context.Background(), func(message models.WsServerMessage) {
+		writes = append(writes, message)
+	}, sessionID, models.WsClientMessage{
+		Type:    "message",
+		Content: "search current news",
+	})
+
+	history, err := sessionService.GetMessages(sessionID.String(), 20, 0)
+	if err != nil {
+		t.Fatalf("GetMessages failed: %v", err)
+	}
+	if len(history) < 2 {
+		t.Fatalf("expected at least user and assistant messages, got %d", len(history))
+	}
+	assistant := history[len(history)-1]
+	if assistant.Role != "assistant" {
+		t.Fatalf("expected assistant message, got %s", assistant.Role)
+	}
+	if assistant.Content != "Latest headlines" {
+		t.Fatalf("unexpected assistant content: %q", assistant.Content)
+	}
+	if assistant.Metadata["structured"] != true {
+		t.Fatalf("expected structured metadata, got %#v", assistant.Metadata)
+	}
+
+	if !containsMessage(writes, "done", "") {
+		t.Fatalf("expected done message in websocket writes: %#v", writes)
+	}
+	if !containsMessage(writes, "status", "Running tool: internet_search...") {
+		t.Fatalf("expected structured tool status in websocket writes: %#v", writes)
+	}
+}
+
+func containsMessage(messages []models.WsServerMessage, msgType, content string) bool {
+	for _, message := range messages {
+		if message.Type != msgType {
+			continue
+		}
+		if content == "" || message.Content == content {
+			return true
+		}
+	}
+	return false
 }
 
 func containsAll(input string, fragments ...string) bool {
