@@ -150,7 +150,7 @@ func TestStepbitCoreClient_ChatStreamingStructured_ParsesStructuredEvents(t *tes
 		}
 
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.created","data":{"id":"resp-1"}}`)
+		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.created","data":{"id":"resp-1","turn_context":{"search_enabled":true,"reason_enabled":false,"requested_tools":["internet_search"],"available_tools":[{"name":"internet_search","provider_id":"web","enabled":true,"read_only":true,"open_world":true,"tags":["web"]}],"used_tools":["internet_search"]}}}`)
 		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.tool_call.started","data":{"tool_name":"internet_search"}}`)
 		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.output_text.delta","data":{"delta":"Hello"}}`)
 		fmt.Fprintf(w, "data: %s\n\n", `{"event":"response.output_text.delta","data":{"delta":" world"}}`)
@@ -180,6 +180,12 @@ func TestStepbitCoreClient_ChatStreamingStructured_ParsesStructuredEvents(t *tes
 
 	if !result.Structured {
 		t.Fatalf("expected structured result")
+	}
+	if result.TurnContext == nil {
+		t.Fatalf("expected turn context to be parsed")
+	}
+	if !result.TurnContext.SearchEnabled || len(result.TurnContext.AvailableTools) != 1 {
+		t.Fatalf("unexpected turn context: %#v", result.TurnContext)
 	}
 	if !result.UsedTools {
 		t.Fatalf("expected tool usage to be detected")

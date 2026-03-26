@@ -199,14 +199,12 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 		rawTurnContent := turnContent.String()
 		var structuredResult structuredChatResultError
 		if errors.As(err, &structuredResult) {
+			assistantMetadata := structuredAssistantMetadata(structuredResult.result)
 			s.sessionService.InsertMessage(&models.Message{
 				SessionID: sessionID,
 				Role:      "assistant",
 				Content:   rawTurnContent,
-				Metadata: map[string]interface{}{
-					"structured": true,
-					"tool_calls": structuredResult.result.ToolEvents,
-				},
+				Metadata:  assistantMetadata,
 			})
 
 			llmMsgs = append(llmMsgs, core.Message{
@@ -214,6 +212,7 @@ func (s *ChatService) handleWsChatMessage(ctx context.Context, write wsWriteFunc
 				Content: rawTurnContent,
 			})
 
+			write(models.WsServerMessage{Type: "context", Content: "", Metadata: assistantMetadata})
 			write(models.WsServerMessage{Type: "done", Content: ""})
 			return
 		}
