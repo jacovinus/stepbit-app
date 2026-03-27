@@ -19,28 +19,28 @@ The system follows a modern Go modular design:
 
 The project is organized into self-contained feature modules. Each module follows a standardized **Models → Services → Handlers** structure.
 
-### 1. [Session Module](file://${AI_TOOLS_ROOT}/stepbit-app/internal/session)
+### 1. [Session Module](./internal/session)
 Manages chat history, persistence, and real-time WebSocket communication.
 - **WebSocket Engine**: Handles bidirectional streaming of tokens and reasoning traces.
 - **Chat Service**: Manages message flow and session state synchronization.
 
-### 2. [Skill Module](file://${AI_TOOLS_ROOT}/stepbit-app/internal/skill)
+### 2. [Skill Module](./internal/skill)
 Handles AI skill management, including dynamic preloading and discovery.
 - **Skill Service**: Provides CRUD and preloading for reusable AI prompt templates.
 
-### 3. [Pipeline Module](file://${AI_TOOLS_ROOT}/stepbit-app/internal/pipeline)
+### 3. [Pipeline Module](./internal/pipeline)
 Manages complex AI workflows and multi-stage reasoning.
 - **Pipeline Service**: Orchestrates the execution of deterministic, multi-node AI pipelines.
 
-### 4. [LLM & Reasoning Module](file://${AI_TOOLS_ROOT}/stepbit-app/internal/llm)
+### 4. [LLM & Reasoning Module](./internal/llm)
 Abstracts communication with LLM providers and the internal reasoning core.
 - **Streaming Proxy**: Forwards tokens directly from `stepbit-core` or OpenAI to the client with zero-copy efficiency.
 
-### 5. [Storage Module](file://${AI_TOOLS_ROOT}/stepbit-app/internal/storage)
+### 5. [Storage Module](./internal/storage)
 Provides high-level data utilities and analytical features.
 - **DuckDB Package**: Managed in `internal/storage/duckdb`, it handles connection pooling and schema initialization.
 
-### 6. [Config Module](file://${AI_TOOLS_ROOT}/stepbit-app/internal/config)
+### 6. [Config Module](./internal/config)
 Manages LLM provider verification, active model selection, and app-wide settings.
 
 ---

@@ -178,8 +178,8 @@ The app exposes both product-facing routes and compatibility surfaces. Key areas
 
 For full request examples, see:
 
-- [API Guide](${AI_TOOLS_ROOT}/stepbit-app/docs/API_GUIDE.md)
-- [Features Guide](${AI_TOOLS_ROOT}/stepbit-app/docs/FEATURES_GUIDE.md)
+- [API Guide](./docs/API_GUIDE.md)
+- [Features Guide](./docs/FEATURES_GUIDE.md)
 
 ## Current Position in the Stepbit Stack
 
@@ -206,11 +206,11 @@ The roadmap continues toward richer execution history, more advanced planner-dri
 
 ## Documentation
 
-- [Features Guide](${AI_TOOLS_ROOT}/stepbit-app/docs/FEATURES_GUIDE.md)
-- [API Guide](${AI_TOOLS_ROOT}/stepbit-app/docs/API_GUIDE.md)
-- [Architecture](${AI_TOOLS_ROOT}/stepbit-app/docs/ARCHITECTURE.md)
-- [Deployment Guide](${AI_TOOLS_ROOT}/stepbit-app/docs/DEPLOYMENT_GUIDE.md)
-- [Core Feature Gap Roadmap](${AI_TOOLS_ROOT}/stepbit-app/docs/CORE_FEATURE_GAP_ROADMAP.md)
+- [Features Guide](./docs/FEATURES_GUIDE.md)
+- [API Guide](./docs/API_GUIDE.md)
+- [Architecture](./docs/ARCHITECTURE.md)
+- [Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)
+- [Core Feature Gap Roadmap](./docs/CORE_FEATURE_GAP_ROADMAP.md)
 
 ## Development Notes
 

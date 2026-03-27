@@ -2,7 +2,7 @@
 
 This document captures the main `stepbit-core` capabilities that are not yet fully surfaced in `stepbit-app`, along with a practical implementation roadmap.
 
-For Rust-to-Go app parity specifically, see [RUST_PARITY_MATRIX.md](${AI_TOOLS_ROOT}/stepbit-app/docs/RUST_PARITY_MATRIX.md).
+For Rust-to-Go app parity specifically, see [RUST_PARITY_MATRIX.md](./RUST_PARITY_MATRIX.md).
 
 ## Rust Chat Parity Status
 
