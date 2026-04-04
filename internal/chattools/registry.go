@@ -47,6 +47,7 @@ func NewRegistry() *Registry {
 	registry.Register(NewSearchTool())
 	registry.Register(NewReadFullContentTool())
 	registry.Register(NewReadURLTool())
+	registry.Register(NewQuantLabTool())
 	return registry
 }
 

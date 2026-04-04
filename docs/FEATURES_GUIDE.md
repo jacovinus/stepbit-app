@@ -293,7 +293,23 @@ Execution History gives you a local audit trail of actions initiated from the ap
 
 ---
 
-## 17. Pluggable Infrastructure 🔌
+## 17. QuantLab Local Adapter (MVP) 🧰
+Stepbit includes a local adapter tool for invoking a QuantLab checkout from the app layer.
+
+### 🎯 What it does
+- resolves a local QuantLab interpreter when available
+- runs `main.py --json-request` with optional `--signal-file`
+- loads the canonical result from `report.json.machine_contract`
+- returns a normalized success/failure payload to Stepbit
+
+### 🧠 Practical Notes
+- the adapter is local-first and does not add distributed orchestration
+- the JSON request contract stays aligned with QuantLab's existing `run` and `sweep` request shapes
+- lifecycle visibility is preserved through the signal file when provided
+
+---
+
+## 18. Pluggable Infrastructure 🔌
 Stepbit is designed to work with or without `stepbit-core`. 
 - **Standalone**: All standard chat and search features work.
 - **Integrated**: Connect `stepbit-core` to unlock **Goal Mode**, the **Pipelines Hub**, **Scheduled Jobs**, **Triggers**, **Execution History**, **Reasoning Graphs**, and **Advanced MCP tools**.
