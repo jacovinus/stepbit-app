@@ -45,6 +45,7 @@ Built with Go, DuckDB, React 19, and Vite, it is designed to sit in front of `st
 - DuckDB-backed local memory layer
 - SQL Explorer and database inspection flows
 - MCP tool discovery plus execution playground
+- QuantLab local adapter tool for running a local `quantlab` checkout through `main.py --json-request`
 - Skill library for reusable prompt assets
 
 ## Product Surfaces
